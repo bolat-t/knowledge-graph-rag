@@ -1,0 +1,30 @@
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/kgrag-local
+      NEO4J_PLUGINS: '["graph-data-science"]'
+      NEO4J_dbms_memory_heap_max__size: 2G
+      NEO4J_dbms_memory_pagecache_size: 1G
+    ports:
+      - "7474:7474"   # browser
+      - "7687:7687"   # bolt
+    volumes:
+      - neo4jdata:/data
+      - ./data/processed/neo4j:/import   # bulk CSV loads read from here
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: kgrag
+      POSTGRES_PASSWORD: kgrag
+      POSTGRES_DB: kgrag
+    ports:
+      - "5433:5432"   # 5432 is Morning Coffee's
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+volumes:
+  neo4jdata:
+  pgdata:

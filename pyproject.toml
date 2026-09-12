@@ -1,0 +1,21 @@
+[project]
+name = "knowledge-graph-rag"
+version = "0.1.0"
+description = "Sydney research graph — OpenAlex works, authors, institutions and citations in Neo4j, abstracts in pgvector, questions answered by traversal and similarity together"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.5.3",
+    "httpx>=0.28.1",
+    "neo4j>=5.28.0",
+    "psycopg[binary]>=3.2.0",
+    "pgvector>=0.3.6",
+    "pyarrow>=18.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "kgrag"

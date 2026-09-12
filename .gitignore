@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data artifacts — reproducible from the OpenAlex API, and large
+data/
+*.duckdb
+*.duckdb.wal
+
+# Secrets (use .env.example as the template)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
