@@ -18,15 +18,16 @@ Embeddings find the works. The graph turns them into people and a path.
 
 ## Status
 
-Building. Graph loaded and answering; embeddings next.
+Building. Both stores loaded and answering on 73% of the corpus; the rest of the pull lands when OpenAlex's daily quota resets.
 
 | Stage | State |
 |---|---|
 | OpenAlex pull → gzipped JSONL | ⏸ **160,334 / 218,984** — free tier is 1,000 requests/day, resumes tomorrow |
 | Shape in DuckDB → node/edge tables | ✅ `shape` — 26 s |
 | Bulk load → Neo4j | ✅ `load_neo4j` — 751k nodes, 4.2 M edges in 8 s |
-| Abstracts → pgvector | ⬜ |
-| Hybrid query (vector → graph) | ⬜ |
+| Abstracts → pgvector | ✅ `embed` — 126,777 abstracts, bge-small on MPS, 30 min; HNSW in 54 s |
+| Hybrid query (vector → graph) | ✅ `ask` — vector top-k → people → shortest path to you |
+| Graph-only questions | ✅ `explore` — collaborators, path, bridges, reach |
 | Write-up | ⬜ |
 
 ## Stack
@@ -103,4 +104,32 @@ uv sync
 uv run python -m kgrag.ingest_works   # resumable; per-year state files
 uv run python -m kgrag.shape          # DuckDB tables + Neo4j CSVs
 uv run python -m kgrag.load_neo4j     # stops Neo4j, bulk-imports, restarts, indexes
+uv sync --extra embed
+uv run python -m kgrag.embed          # abstracts -> pgvector (resumable, ~30 min on an M-series Mac)
+
+uv run python -m kgrag.ask "spatial analysis of bushfire risk to homes" --from "Your Name"
+uv run python -m kgrag.explore collaborators
+uv run python -m kgrag.explore path "Kamal Dua" "Dacheng Tao"
+uv run python -m kgrag.explore bridges "Computer Science" "Medicine"
 ```
+
+## What it answers
+
+```
+$ uv run python -m kgrag.ask "spatial analysis of bushfire risk to homes using
+    address-level data and census demographics" --from "Kamal Dua"
+
+  closest works
+   0.843  2024  Wildfire Loss Modeling: A Flexible Semiparametric Approach
+   0.841  2021  Spatial Analysis, Interactive Visualisation and GIS-Based Dashboard …
+   0.827  2021  Application of an Ensemble Statistical Approach in Spatial Predictions of Bushfire …
+
+  people on those works, Sydney-affiliated since 2022  [0.15s]
+    3 of 30  Sara Shirowzhan     UNSW          4 hops via Neha Jain, Perminder S. Sachdev, …
+    2 of 30  Christopher Pettit  USyd / UNSW   3 hops via Gaurav Gupta, Rebecca Ivers
+    2 of 30  Matthias M. Boer    WSU           3 hops via Philip M. Hansbro, Bradley Law
+    2 of 30  Ross A. Bradstock   WSU           4 hops via Michelle L. Bell, Yuming Guo, …
+```
+
+The vector store found the papers; the graph turned them into people and a
+path to each. Neither could have done the other's half.
