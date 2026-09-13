@@ -1,3 +1,13 @@
+---
+title: Sydney Research Graph
+emoji: 🕸️
+colorFrom: gray
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Knowledge Graph RAG
 
 *Sydney's research graph — repo for portfolio project 6, the graph lane.*
@@ -18,7 +28,7 @@ Embeddings find the works. The graph turns them into people and a path.
 
 ## Status
 
-Built. Full corpus in both stores; write-up next.
+Built. Full corpus in both stores; web app in `web/` + `kgrag.api`; deploys to a Hugging Face Space from the `Dockerfile`.
 
 | Stage | State |
 |---|---|
@@ -29,6 +39,8 @@ Built. Full corpus in both stores; write-up next.
 | Abstracts → pgvector | ✅ `embed` — 170,894 abstracts, bge-small on MPS, ~40 min; HNSW in 54 s |
 | Hybrid query (vector → graph) | ✅ `ask` — vector top-k → people → shortest path to you |
 | Graph-only questions | ✅ `explore` — collaborators, path, bridges, reach |
+| Web app | ✅ `kgrag.api` + `web/index.html` — ask box, author autocomplete, paths, ego network |
+| Hosted demo | 🔄 Hugging Face Space, one container: Neo4j + pgvector + app, databases loaded at build |
 | Write-up | ⬜ |
 
 ## Stack
@@ -101,6 +113,22 @@ Measured, not assumed — the numbers come from `shape`'s report.
 - **Authorships are capped at 100 per work** in the API response. The
   4,000-author physics papers are in the corpus with their first hundred.
 
+## Deploying the demo
+
+The `Dockerfile` builds one container for a Hugging Face Space: Ubuntu, a JRE,
+Neo4j community unpacked from the tarball, Postgres 16 with pgvector, and the
+app — all running as uid 1000. The data bundle (Neo4j import CSVs and the
+embeddings as parquet, ~420 MB) lives in the public dataset
+`bolat-t/kgrag-data`; the build downloads it, imports Neo4j, loads and indexes
+pgvector, caches the embedding model, and throws the bundle away. A cold start
+is just three services coming up. To test the build locally, put the bundle at
+`deploy/bundle/` and the fetch step uses that instead.
+
+```bash
+docker build -t kgrag-space .
+docker run -p 7860:7860 kgrag-space
+```
+
 ## The picture
 
 ![One author's co-authorship neighbourhood](docs/ego_wide.png)
@@ -121,6 +149,9 @@ uv run python -m kgrag.shape                 # DuckDB tables + Neo4j CSVs
 uv run python -m kgrag.load_neo4j     # stops Neo4j, bulk-imports, restarts, indexes
 uv sync --extra embed
 uv run python -m kgrag.embed          # abstracts -> pgvector (resumable, ~30 min on an M-series Mac)
+
+uv sync --extra serve
+uv run uvicorn kgrag.api:app --port 7860       # the web app, http://localhost:7860
 
 uv run python -m kgrag.ask "spatial analysis of bushfire risk to homes" --from "Your Name"
 uv run python -m kgrag.explore collaborators

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sydney research graph</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root { --bg:#f6f2ea; --ink:#5d5751; --faint:rgba(93,87,81,.18); --mid:rgba(93,87,81,.62); --accent:#c0392b; --card:#fbf9f4; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 22px 60px; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 22px; margin-bottom:22px; }
+  h1 { font-size:22px; font-weight:400; margin:0; letter-spacing:-.01em; }
+  header .stats { font:12.5px ui-monospace, Menlo, monospace; color:var(--mid); }
+  .layout { display:grid; grid-template-columns: minmax(0,1fr) 420px; gap:28px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .box { background:var(--card); border:1px solid var(--faint); border-radius:4px; padding:16px 18px; }
+  label { display:block; font:11px ui-monospace, Menlo, monospace; text-transform:uppercase; letter-spacing:.08em; color:var(--mid); margin:0 0 6px; }
+  textarea, input { width:100%; font-family:inherit; font-size:15px; line-height:1.4; color:var(--ink); background:#fff; border:1px solid var(--faint); border-radius:3px; padding:9px 11px; }
+  textarea { resize:vertical; min-height:70px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  .field { position:relative; }
+  .sugg { position:absolute; left:0; right:0; top:100%; z-index:5; background:#fff; border:1px solid var(--faint); border-top:0; display:none; }
+  .sugg div { padding:7px 11px; cursor:pointer; font-size:14px; }
+  .sugg div:hover { background:var(--bg); }
+  .sugg small { color:var(--mid); margin-left:6px; }
+  button { font:13px ui-monospace, Menlo, monospace; color:#fff; background:var(--ink); border:0; border-radius:3px; padding:9px 16px; cursor:pointer; margin-top:12px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .chip { font-size:12.5px; border:1px solid var(--faint); border-radius:14px; padding:3px 11px; cursor:pointer; color:var(--mid); background:transparent; margin:0; }
+  .chip:hover { color:var(--ink); border-color:var(--ink); }
+  h2 { font-size:12px; font-weight:400; text-transform:uppercase; letter-spacing:.09em; color:var(--mid); margin:26px 0 8px; font-family: ui-monospace, Menlo, monospace; }
+  h2 span { color:var(--mid); text-transform:none; letter-spacing:0; margin-left:10px; }
+  .works { font-size:13.5px; color:var(--mid); }
+  .works div { display:flex; gap:10px; padding:3px 0; }
+  .works b { font-weight:400; color:var(--ink); }
+  .works .more { cursor:pointer; text-decoration:underline; }
+  .person { display:grid; grid-template-columns: 34px 1fr; gap:10px; padding:10px 0; border-top:1px solid var(--faint); cursor:pointer; }
+  .person:hover .name { text-decoration:underline; }
+  .person.active .name { color:var(--accent); }
+  .person .n { font:13px ui-monospace, Menlo, monospace; color:var(--mid); padding-top:2px; }
+  .person .name { font-size:16px; }
+  .person .inst { font-size:13px; color:var(--mid); margin-left:8px; }
+  .person .path { font-size:13.5px; margin-top:2px; }
+  .person .path em { font-style:normal; color:var(--accent); }
+  .person .eg { font-size:13px; color:var(--mid); margin-top:2px; }
+  .side h3 { font-size:15px; font-weight:400; margin:0 0 2px; }
+  .side .sub { font-size:12.5px; color:var(--mid); margin-bottom:8px; }
+  #ego { width:100%; aspect-ratio: 1/1.15; display:block; }
+  .legend { font-size:12px; color:var(--mid); display:flex; gap:14px; margin-top:6px; }
+  .legend i { display:inline-block; width:9px; height:9px; border-radius:50%; border:1px solid var(--ink); vertical-align:middle; margin-right:5px; }
+  .status { font:13px ui-monospace, Menlo, monospace; color:var(--mid); margin-top:12px; min-height:1.4em; }
+  .err { color:var(--accent); }
+  footer { margin-top:44px; font-size:12.5px; color:var(--mid); line-height:1.6; }
+  footer a { color:inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Who in Sydney works on this, and how am I connected to them?</h1>
+    <div class="stats" id="stats">loading…</div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="box">
+        <label for="q">Describe the work, in your own words</label>
+        <textarea id="q" placeholder="e.g. spatial analysis of bushfire risk to homes using address-level data and census demographics"></textarea>
+        <div class="row">
+          <div class="field">
+            <label for="me">You are (optional — a name as it appears on papers)</label>
+            <input id="me" autocomplete="off" placeholder="start typing a surname">
+            <div class="sugg" id="sugg"></div>
+          </div>
+          <div>
+            <label for="inst">Restrict to</label>
+            <select id="inst" style="width:100%;font:15px inherit;color:var(--ink);background:#fff;border:1px solid var(--faint);border-radius:3px;padding:9px 11px">
+              <option value="">any Sydney university</option>
+              <option>UNSW Sydney</option><option>The University of Sydney</option>
+              <option>University of Technology Sydney</option><option>Macquarie University</option>
+              <option>Western Sydney University</option>
+            </select>
+          </div>
+        </div>
+        <button id="go">Ask</button>
+        <div class="chips" id="chips"></div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div id="out" hidden>
+        <h2>closest works <span id="worksN"></span></h2>
+        <div class="works" id="works"></div>
+        <h2>people on those works <span id="peopleN"></span></h2>
+        <div id="people"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h3 id="egoName">Co-authorship neighbourhood</h3>
+        <div class="sub" id="egoSub">Click a person to draw theirs.</div>
+        <svg id="ego"></svg>
+        <div class="legend"><span><i style="background:var(--ink)"></i>Sydney-affiliated</span><span><i style="background:#fff"></i>elsewhere</span><span><i style="background:var(--accent);border-color:var(--accent)"></i>selected</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Every journal article since 2019 with an author at UNSW, USyd, UTS, Macquarie or Western Sydney — 218,984 works from <a href="https://openalex.org">OpenAlex</a>. Similarity over abstracts in pgvector finds the papers; a Neo4j graph of authors, institutions and citations turns them into people and a path. Paths are co-authorship: two hops means a co-author of a co-author. <a href="https://github.com/bolat-t/knowledge-graph-rag">Code and data-quality notes</a>.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const EXAMPLES = [
+  ["spatial analysis of bushfire risk to homes using address-level data and census demographics", "Kamal Dua"],
+  ["large language models for clinical decision support and patient safety", "Christopher Pettit"],
+  ["graph neural networks for drug discovery", ""],
+  ["forecasting electricity demand with renewable penetration", ""],
+  ["urban heat islands and tree canopy cover in Sydney", "Dacheng Tao"],
+];
+const short = s => s.replace("The University of Sydney","USyd").replace("University of Technology Sydney","UTS").replace("UNSW Sydney","UNSW").replace("Macquarie University","Macquarie").replace("Western Sydney University","WSU");
+
+fetch('/api/stats').then(r=>r.json()).then(s => {
+  const n = s.nodes; $('stats').textContent = `${n.Work.toLocaleString()} works · ${n.Author.toLocaleString()} authors · ${s.relationships.toLocaleString()} edges · ${s.abstracts.toLocaleString()} abstracts`;
+}).catch(()=> $('stats').textContent = 'databases starting up — try again in a minute');
+
+$('chips').innerHTML = EXAMPLES.map((e,i)=>`<button class="chip" data-i="${i}">${e[0].slice(0,52)}${e[0].length>52?'…':''}</button>`).join('');
+$('chips').onclick = e => { const c=e.target.closest('.chip'); if(!c) return; const [q,me]=EXAMPLES[c.dataset.i]; $('q').value=q; $('me').value=me; ask(); };
+
+// author autocomplete
+let sugT;
+$('me').addEventListener('input', () => {
+  clearTimeout(sugT); const v=$('me').value.trim(); if(v.length<2){ $('sugg').style.display='none'; return; }
+  sugT = setTimeout(async () => {
+    const rows = await fetch('/api/authors?q='+encodeURIComponent(v)).then(r=>r.json()).catch(()=>[]);
+    $('sugg').innerHTML = rows.map(r=>`<div data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.institutions.join(' / ')} · ${r.n_works} works</small></div>`).join('');
+    $('sugg').style.display = rows.length ? 'block' : 'none';
+  }, 220);
+});
+$('sugg').onclick = e => { const d=e.target.closest('div[data-n]'); if(!d) return; $('me').value=d.dataset.n; $('sugg').style.display='none'; };
+document.addEventListener('click', e => { if(!e.target.closest('.field')) $('sugg').style.display='none'; });
+
+$('go').onclick = ask;
+$('q').addEventListener('keydown', e => { if(e.key==='Enter' && (e.metaKey||e.ctrlKey)) ask(); });
+
+async function ask(){
+  const q=$('q').value.trim(); if(q.length<3) return;
+  $('go').disabled=true; $('status').textContent='embedding the question, searching 170,894 abstracts, walking the graph…'; $('status').className='status';
+  const p = new URLSearchParams({q, k:30}); if($('me').value.trim()) p.set('me',$('me').value.trim()); if($('inst').value) p.set('institution',$('inst').value);
+  const t0=performance.now();
+  try{
+    const r = await fetch('/api/ask?'+p); if(!r.ok) throw new Error(await r.text());
+    render(await r.json(), performance.now()-t0);
+  }catch(e){ $('status').textContent='error: '+e.message; $('status').className='status err'; }
+  $('go').disabled=false;
+}
+
+function render(d, ms){
+  $('status').textContent = `${(ms/1000).toFixed(1)} s`;
+  $('out').hidden=false;
+  const ws=d.works, show=5;
+  const line = w => `<div><span>${w.score.toFixed(3)}</span><span>${w.year||''}</span><b>${w.title}</b></div>`;
+  $('worksN').textContent = `${ws.length} by similarity`;
+  $('works').innerHTML = ws.slice(0,show).map(line).join('') + (ws.length>show?`<div class="more" id="moreW">… and ${ws.length-show} more</div>`:'');
+  if(ws.length>show) $('moreW').onclick = () => { $('works').innerHTML = ws.map(line).join(''); };
+  $('peopleN').textContent = d.me ? `Sydney-affiliated · paths from ${d.me.name}` : 'Sydney-affiliated · add your name for paths';
+  $('people').innerHTML = d.people.map(p => `
+    <div class="person" data-id="${p.id}" data-name="${p.name.replace(/"/g,'&quot;')}">
+      <div class="n">${p.matched}/${ws.length}</div>
+      <div>
+        <span class="name">${p.name}</span><span class="inst">${p.institutions.join(' / ')} · ${p.n_works} works</span>
+        ${p.path ? `<div class="path"><em>${p.path.hops} hop${p.path.hops!==1?'s':''}</em>${p.path.via.length?' via '+p.path.via.slice(0,3).join(', '):' — a co-author'}</div>` : (d.me && d.me.id!==p.id ? `<div class="path">no co-authorship path within 4 hops</div>` : '')}
+        <div class="eg">e.g. ${p.titles[0]}</div>
+      </div>
+    </div>`).join('') || '<div class="works">nobody with a current Sydney affiliation on those works</div>';
+  $('people').querySelectorAll('.person').forEach(el => el.onclick = () => { $('people').querySelectorAll('.person').forEach(x=>x.classList.remove('active')); el.classList.add('active'); drawEgo(el.dataset.id); });
+  if(d.people[0]) { $('people').querySelector('.person').classList.add('active'); drawEgo(d.people[0].id); }
+}
+
+async function drawEgo(id){
+  $('egoSub').textContent='loading…';
+  const g = await fetch('/api/ego?id='+encodeURIComponent(id)+'&limit=50').then(r=>r.json());
+  $('egoName').textContent = g.centre.name;
+  $('egoSub').textContent = `${g.centre.institutions.map(short).join(' / ')} · ${g.centre.n_works} works · ${g.nodes.length-1} strongest co-authors`;
+  const svg=d3.select('#ego'), box=$('ego').getBoundingClientRect(), W=box.width, H=box.height; svg.attr('viewBox',`0 0 ${W} ${H}`).selectAll('*').remove();
+  const ink='#5d5751', accent='#c0392b';
+  const nodes=g.nodes, links=g.links.map(l=>({source:l.s,target:l.t,n:l.n}));
+  const sim=d3.forceSimulation(nodes).force('link',d3.forceLink(links).id(d=>d.id).distance(d=>28+60/Math.sqrt(d.n)).strength(d=>Math.min(1,d.n/6)))
+    .force('charge',d3.forceManyBody().strength(-150)).force('center',d3.forceCenter(W/2,H/2)).force('collide',d3.forceCollide(11)).stop();
+  for(let i=0;i<300;i++) sim.tick();
+  svg.append('g').selectAll('line').data(links).join('line').attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y)
+    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.55,.12+d.n*.06)).attr('stroke-width',d=>Math.min(3,.5+d.n*.3));
+  const gn=svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor','pointer')
+    .on('click',(e,d)=>{ if(!d.me) drawEgo(d.id); });
+  gn.append('circle').attr('r',d=>d.me?11:3.5+Math.sqrt(d.shared)*1.8).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.2);
+  gn.append('title').text(d=>`${d.name}${d.me?'':` — ${d.shared} shared paper${d.shared!==1?'s':''}`}`);
+  gn.filter(d=>d.me||d.shared>=Math.max(3,nodes[1]?.shared*0.5||3)).append('text').text(d=>d.name).attr('x',d=>(d.me?13:6+Math.sqrt(d.shared)*1.8)).attr('y',4).attr('font-size',11).attr('font-family','ui-monospace, Menlo, monospace').attr('fill',ink);
+}
+</script>
+</body>
+</html>
