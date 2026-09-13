@@ -40,7 +40,7 @@ Built. Full corpus in both stores; web app in `web/` + `kgrag.api`; deploys to a
 | Hybrid query (vector → graph) | ✅ `ask` — vector top-k → people → shortest path to you |
 | Graph-only questions | ✅ `explore` — collaborators, path, bridges, reach |
 | Web app | ✅ `kgrag.api` + `web/index.html` — ask box, author autocomplete, paths, ego network |
-| Hosted demo | 🔄 Hugging Face Space, one container: Neo4j + pgvector + app, databases loaded at build |
+| Hosted demo | 🔄 one container (Neo4j + pgvector + app, databases loaded at build) on an always-free Oracle A1 VM — HF Docker Spaces now need PRO |
 | Write-up | ⬜ |
 
 ## Stack
@@ -119,6 +119,17 @@ Measured, not assumed — the numbers come from `shape`'s report.
   4,000-author physics papers are in the corpus with their first hundred.
 
 ## Deploying the demo
+
+On a fresh Ubuntu 24.04 arm64 VM (Oracle's always-free Ampere A1 works):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bolat-t/knowledge-graph-rag/main/deploy/vm/setup.sh | bash
+```
+
+That opens 80/443 in Oracle's iptables, installs Docker, builds the image on
+the box from this repo and the public data bundle, and puts Caddy in front with
+an automatic Let's Encrypt certificate on a free `sslip.io` hostname.
+
 
 The `Dockerfile` builds one container for a Hugging Face Space: Ubuntu, a JRE,
 Neo4j community unpacked from the tarball, Postgres 16 with pgvector, and the
