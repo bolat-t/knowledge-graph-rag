@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>ego</title>
+<style>html,body{margin:0;background:#f6f2ea}svg{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<svg id="s"></svg>
+<script>
+const W = +new URLSearchParams(location.search).get('w') || 900, H = +new URLSearchParams(location.search).get('h') || 1180;
+const svg = d3.select('#s').attr('width', W).attr('height', H);
+fetch('ego.json').then(r => r.json()).then(({nodes, links}) => {
+  const ink = '#5d5751', accent = '#c0392b';
+  links = links.map(l => ({source: l.s, target: l.t, n: l.n}));
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(d => 40 + 80 / Math.sqrt(d.n)).strength(d => Math.min(1, d.n / 6)))
+    .force('charge', d3.forceManyBody().strength(-260))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide(14))
+    .stop();
+  for (let i = 0; i < 400; i++) sim.tick();
+  svg.append('g').selectAll('line').data(links).join('line')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+    .attr('stroke', ink).attr('stroke-opacity', d => Math.min(.55, .12 + d.n * .06)).attr('stroke-width', d => Math.min(4, .6 + d.n * .35));
+  svg.append('g').selectAll('circle').data(nodes).join('circle')
+    .attr('cx', d => d.x).attr('cy', d => d.y)
+    .attr('r', d => d.me ? 14 : 4 + Math.sqrt(d.shared) * 2.2)
+    .attr('fill', d => d.me ? accent : d.sydney ? ink : '#f6f2ea')
+    .attr('stroke', d => d.me ? accent : ink).attr('stroke-width', 1.4);
+  document.title = 'done';
+});
+</script>

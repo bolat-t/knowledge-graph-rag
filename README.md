@@ -101,6 +101,14 @@ Measured, not assumed — the numbers come from `shape`'s report.
 - **Authorships are capped at 100 per work** in the API response. The
   4,000-author physics papers are in the corpus with their first hundred.
 
+## The picture
+
+![One author's co-authorship neighbourhood](docs/ego_wide.png)
+
+One author's co-authorship neighbourhood, drawn from the graph: filled circles
+are Sydney-affiliated, hollow ones are everywhere else. `docs/ego.html` renders
+`docs/ego.json` with d3-force; the JSON comes from two Cypher queries.
+
 ## Running it
 
 ```bash
