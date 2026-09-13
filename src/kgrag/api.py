@@ -68,8 +68,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Sydney research graph", lifespan=lifespan)
 
 
-def cypher(q: str, **params):
-    return [dict(r) for r in STATE["neo4j"].execute_query(q, **params).records]
+def cypher(query: str, **params):
+    return [dict(r) for r in STATE["neo4j"].execute_query(query, **params).records]
 
 
 def short_inst(name: str) -> str:

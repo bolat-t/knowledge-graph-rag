@@ -21,7 +21,7 @@ RUN curl -fsSL https://dist.neo4j.org/neo4j-community-${NEO4J_VERSION}-unix.tar.
     && mv /opt/neo4j-community-${NEO4J_VERSION} /opt/neo4j
 
 # Spaces run the container as uid 1000.
-RUN useradd -m -u 1000 app && mkdir -p /data /app && chown -R app:app /data /app /opt/neo4j
+RUN userdel -r ubuntu 2>/dev/null; useradd -m -u 1000 app && mkdir -p /data /app && chown -R app:app /data /app /opt/neo4j
 USER app
 WORKDIR /app
 
@@ -38,8 +38,10 @@ COPY --chown=app:app deploy ./deploy
 RUN python deploy/fetch_bundle.py && rm -rf deploy/bundle
 
 # Postgres: init, load, index, stop. Port 5433 to match the local compose.
-RUN initdb -D /data/pg --auth=trust -U kgrag >/dev/null \
-    && pg_ctl -D /data/pg -l /data/pg.log -o "-c listen_addresses=127.0.0.1 -p 5433" start \
+# Encoding is explicit: a bare initdb here gives SQL_ASCII, and psycopg then
+# returns every text column as bytes, which matches nothing in the graph.
+RUN initdb -D /data/pg --auth=trust -U kgrag --encoding=UTF8 --locale=C.UTF-8 >/dev/null \
+    && (pg_ctl -D /data/pg -l /data/pg.log -o "-c listen_addresses=127.0.0.1 -p 5433 -c unix_socket_directories=/tmp" start || (cat /data/pg.log; exit 1)) \
     && until pg_isready -h 127.0.0.1 -p 5433 -q; do sleep 1; done \
     && createdb -h 127.0.0.1 -p 5433 -U kgrag kgrag \
     && python deploy/load_pg.py postgresql://kgrag@127.0.0.1:5433/kgrag /data/bundle/work_text.parquet \

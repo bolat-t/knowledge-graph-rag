@@ -110,6 +110,11 @@ Measured, not assumed — the numbers come from `shape`'s report.
 - **Only 3.5% of references point inside the corpus** (378k of 10.8 M). The rest
   are stub ids for works outside it. `CITES` edges are corpus-internal; the
   full reference lists stay in DuckDB for expansion later.
+- **A bare `initdb` gives you SQL_ASCII, and psycopg then returns bytes.** The
+  first Space image loaded and indexed pgvector cleanly and answered every
+  question with nobody: the work ids came back as `b'W4415108811'` and matched
+  nothing in the graph. The local pgvector image initialises UTF-8 by default,
+  which is why it never showed up before. `--encoding=UTF8 --locale=C.UTF-8`.
 - **Authorships are capped at 100 per work** in the API response. The
   4,000-author physics papers are in the corpus with their first hundred.
 
