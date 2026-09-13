@@ -18,14 +18,15 @@ Embeddings find the works. The graph turns them into people and a path.
 
 ## Status
 
-Building. Both stores loaded and answering on 73% of the corpus; the rest of the pull lands when OpenAlex's daily quota resets.
+Built. Full corpus in both stores; write-up next.
 
 | Stage | State |
 |---|---|
-| OpenAlex pull → gzipped JSONL | ⏸ **160,334 / 218,984** — free tier is 1,000 requests/day, resumes tomorrow |
+| OpenAlex pull → gzipped JSONL | ✅ `ingest_works` — 218,984 works over two days of free-tier quota |
+| Institution aliases | ✅ `ingest_institutions` — 7,180 records, 144 requests |
 | Shape in DuckDB → node/edge tables | ✅ `shape` — 26 s |
-| Bulk load → Neo4j | ✅ `load_neo4j` — 751k nodes, 4.2 M edges in 8 s |
-| Abstracts → pgvector | ✅ `embed` — 126,777 abstracts, bge-small on MPS, 30 min; HNSW in 54 s |
+| Bulk load → Neo4j | ✅ `load_neo4j` — 889k nodes, 5.7 M edges in 10 s |
+| Abstracts → pgvector | ✅ `embed` — 170,894 abstracts, bge-small on MPS, ~40 min; HNSW in 54 s |
 | Hybrid query (vector → graph) | ✅ `ask` — vector top-k → people → shortest path to you |
 | Graph-only questions | ✅ `explore` — collaborators, path, bridges, reach |
 | Write-up | ⬜ |
@@ -69,7 +70,7 @@ Measured, not assumed — the numbers come from `shape`'s report.
   and says when to come back.
 - **Eight parallel year-cursors drew 429s within minutes; four did not.**
   Years are disjoint filters, so parallel cursors need no de-duplication.
-- **3.2% of authorships have no author id.** They keep their raw name on the
+- **3.3% of authorships have no author id.** They keep their raw name on the
   authorship row in DuckDB and are absent from the graph: a node without a key
   cannot be de-duplicated, and a graph of unresolvable people is worse than a
   graph with a stated gap.
@@ -83,13 +84,18 @@ Measured, not assumed — the numbers come from `shape`'s report.
   Foundation*. University of Sydney infectious-disease affiliations resolve to
   *Taronga Conservation Society*. Each (authorship, institution) pair keeps the
   raw string it was resolved from, and two tests run on it: is it garbage
-  (under four letters or boilerplate), and does it mention any distinctive
-  word — or the initials — of the institution's name. An institution failing
-  either on most of its authorships is `suspect`: kept as a node, given no
-  edges. 207 institutions, 30,000 authorships. Some are false positives
-  (CERN is only ever written "CERN"); the fix is the institution's real
-  acronyms from the API, five requests, pending tomorrow's quota.
-- **Only 3.4% of references point inside the corpus** (313k of 9.2 M). The rest
+  (under four letters or boilerplate), and does it mention the institution
+  at all — any distinctive word of its name, its initials, or any acronym,
+  alternative or international name from its OpenAlex record. An institution
+  failing either test on most of its authorships is `suspect`: kept as a
+  node, given no edges. **168 institutions, 14,700 authorships.** Before the
+  alias records it was 207 and 30,000, with CERN, CEA and IN2P3 wrongly
+  caught — nobody writes "European Organization for Nuclear Research" in a
+  byline. What remains are sinks: *Hunter Water* holding the University of
+  Newcastle's Ourimbah campus, *St Vincents Institute of Medical Research*
+  (Melbourne) holding St Vincent's Sydney, *Valongo Observatory* holding a
+  different Rio de Janeiro lab.
+- **Only 3.5% of references point inside the corpus** (378k of 10.8 M). The rest
   are stub ids for works outside it. `CITES` edges are corpus-internal; the
   full reference lists stay in DuckDB for expansion later.
 - **Authorships are capped at 100 per work** in the API response. The
@@ -101,8 +107,9 @@ Measured, not assumed — the numbers come from `shape`'s report.
 cp .env.example .env               # add your mailto
 docker compose up -d               # Neo4j on 7474/7687, Postgres on 5433
 uv sync
-uv run python -m kgrag.ingest_works   # resumable; per-year state files
-uv run python -m kgrag.shape          # DuckDB tables + Neo4j CSVs
+uv run python -m kgrag.ingest_works          # resumable; per-year state files; ~1,100 requests
+uv run python -m kgrag.ingest_institutions   # aliases for every institution with 20+ authorships
+uv run python -m kgrag.shape                 # DuckDB tables + Neo4j CSVs
 uv run python -m kgrag.load_neo4j     # stops Neo4j, bulk-imports, restarts, indexes
 uv sync --extra embed
 uv run python -m kgrag.embed          # abstracts -> pgvector (resumable, ~30 min on an M-series Mac)

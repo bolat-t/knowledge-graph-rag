@@ -43,16 +43,46 @@ from __future__ import annotations
 import sys
 import time
 
+import json
+
 import duckdb
+import pyarrow as pa
 
 from .config import DB_PATH, PROCESSED, RAW, SYDNEY_INSTITUTIONS, ensure_dirs
 
 PARTS = RAW / "works"
+INSTITUTIONS = RAW / "institutions.jsonl"
 NEO = PROCESSED / "neo4j"
 SYD = ", ".join(f"'https://openalex.org/{i}'" for i in SYDNEY_INSTITUTIONS)
 
 
+def load_aliases(con: duckdb.DuckDBPyConnection) -> int:
+    """institution_alias(id, aliases): acronyms, alternative and international
+    names from the institution records, lower-cased, three letters or more.
+    Empty when `ingest_institutions` has not run; the mismatch test then falls
+    back to the display name and its initials."""
+    rows: list[tuple[str, list[str]]] = []
+    if INSTITUTIONS.exists():
+        for line in INSTITUTIONS.open():
+            r = json.loads(line)
+            names = set(r.get("display_name_acronyms") or []) | set(r.get("display_name_alternatives") or [])
+            intl = r.get("international") or {}
+            for v in intl.values():
+                if isinstance(v, dict):
+                    names |= {x for x in v.values() if isinstance(x, str)}
+                elif isinstance(v, str):
+                    names.add(v)
+            aliases = sorted({n.lower().strip() for n in names if len(n.strip()) >= 3})
+            rows.append((r["id"], aliases))
+    tbl = pa.table({"id": [r[0] for r in rows], "aliases": pa.array([r[1] for r in rows], pa.list_(pa.string()))})
+    con.register("alias_arrow", tbl)
+    con.execute("create or replace table institution_alias as select * from alias_arrow")
+    con.unregister("alias_arrow")
+    return len(rows)
+
+
 def build(con: duckdb.DuckDBPyConnection) -> None:
+    load_aliases(con)
     con.execute(
         f"""
         create or replace table work_raw as
@@ -136,11 +166,12 @@ def build(con: duckdb.DuckDBPyConnection) -> None:
         )
         , acr as (
             -- CNRS is never written out in an affiliation string; its initials are.
-            select *, list_aggregate(list_transform(
+            select t.*, coalesce(al.aliases, []) as aliases,
+                   list_aggregate(list_transform(
                         list_filter(regexp_split_to_array(lower(display_name), '[^a-z]+'),
                                     w -> length(w) >= 3 and w not in ('the','and','for','des','les','von','der','und')),
                         w -> w[1]), 'string_agg', '') as acronym
-            from tok
+            from tok t left join institution_alias al using (id)
         )
         select work_id, id, display_name, ror, country_code, type, raw,
                (length(regexp_replace(raw, '[^a-z]', '', 'g')) < 4
@@ -149,6 +180,7 @@ def build(con: duckdb.DuckDBPyConnection) -> None:
                (len(toks) > 0
                 and not list_aggregate(list_transform(toks, t -> contains(raw, t)), 'bool_or')
                 and not (length(acronym) >= 3 and regexp_matches(raw, '\\b' || acronym || '\\b'))
+                and not coalesce(list_aggregate(list_transform(aliases, a -> regexp_matches(raw, '\\b' || regexp_escape(a) || '\\b')), 'bool_or'), false)
                ) as mismatch
         from acr
         """
