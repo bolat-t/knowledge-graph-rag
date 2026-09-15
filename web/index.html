@@ -6,256 +6,163 @@
 <title>Sydney research graph</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
-  :root { --bg:#f6f2ea; --ink:#2f2b28; --soft:#5d5751; --faint:rgba(93,87,81,.16); --mid:rgba(93,87,81,.66);
-          --accent:#c0392b; --accent-soft:rgba(192,57,43,.09); --card:#fbf9f4; --mono: ui-monospace, Menlo, Consolas, monospace; }
+  :root { --bg:#f7f4ee; --ink:#26221f; --soft:#6b645d; --faint:rgba(38,34,31,.12); --mid:rgba(38,34,31,.5);
+          --accent:#c0392b; --mono: ui-monospace, Menlo, Consolas, monospace; }
   * { box-sizing:border-box; }
-  html,body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 Georgia, "Iowan Old Style", "Times New Roman", serif; }
-  .wrap { max-width:1220px; margin:0 auto; padding:30px 24px 70px; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.5 Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .wrap { max-width:1140px; margin:0 auto; padding:64px 28px 80px; }
 
-  /* ---- intro ---- */
-  .hero { display:grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap:34px; align-items:start; margin-bottom:26px; }
-  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
-  h1 { font-size:30px; line-height:1.15; font-weight:400; margin:0 0 12px; letter-spacing:-.015em; }
-  .lede { font-size:17px; color:var(--soft); margin:0; max-width:56ch; }
-  .lede b { color:var(--ink); font-weight:600; }
-  .steps { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-  .steps li { display:grid; grid-template-columns:30px 1fr; gap:10px; align-items:start; font-size:15px; color:var(--soft); }
-  .steps i { font:600 12px/26px var(--mono); width:26px; height:26px; border-radius:50%; background:var(--ink); color:#fff; text-align:center; font-style:normal; }
-  .steps b { color:var(--ink); font-weight:600; }
-  .stats { font:12.5px var(--mono); color:var(--mid); margin-top:14px; }
-
-  /* ---- layout ---- */
-  .layout { display:grid; grid-template-columns: minmax(0,1fr) 460px; gap:28px; align-items:start; }
-  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
-  .box { background:var(--card); border:1px solid var(--faint); border-radius:6px; padding:18px 20px; }
-  label { display:block; font:11px var(--mono); text-transform:uppercase; letter-spacing:.08em; color:var(--mid); margin:0 0 6px; }
-  textarea, input, select { width:100%; font-family:inherit; font-size:16px; line-height:1.4; color:var(--ink); background:#fff; border:1px solid var(--faint); border-radius:4px; padding:10px 12px; }
-  textarea { resize:vertical; min-height:78px; }
-  textarea:focus, input:focus, select:focus { outline:2px solid rgba(192,57,43,.35); outline-offset:1px; }
-  .row { display:grid; grid-template-columns: 1.3fr 1fr; gap:12px; margin-top:12px; }
-  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
-  .field { position:relative; }
-  .hint { font-size:12.5px; color:var(--mid); margin-top:4px; }
-  .sugg { position:absolute; left:0; right:0; top:calc(100% - 20px); z-index:5; background:#fff; border:1px solid var(--faint); border-top:0; display:none; box-shadow:0 8px 20px rgba(0,0,0,.06); }
-  .sugg div { padding:8px 12px; cursor:pointer; font-size:15px; }
+  h1 { font-size:44px; line-height:1.08; font-weight:400; margin:0 0 30px; letter-spacing:-.02em; max-width:18ch; }
+  .ask { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:12px; align-items:stretch; max-width:760px; }
+  textarea { width:100%; font-family:inherit; font-size:19px; line-height:1.4; color:var(--ink); background:#fff; border:1px solid var(--faint); border-radius:6px; padding:14px 16px; resize:none; height:86px; }
+  textarea:focus { outline:none; border-color:var(--ink); }
+  button.go { font:600 14px var(--mono); color:#fff; background:var(--ink); border:0; border-radius:6px; padding:0 22px; cursor:pointer; }
+  button.go:disabled { opacity:.4; cursor:default; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px 22px; align-items:baseline; margin:12px 0 0; max-width:760px; font-size:14px; color:var(--mid); }
+  .meta .field { position:relative; display:inline-flex; align-items:baseline; gap:8px; }
+  .meta input { font-family:inherit; font-size:15px; color:var(--ink); background:transparent; border:0; border-bottom:1px solid var(--faint); padding:2px 0; width:190px; }
+  .meta input:focus { outline:none; border-bottom-color:var(--ink); }
+  .meta input::placeholder { color:var(--mid); }
+  .sugg { position:absolute; left:0; top:100%; z-index:5; min-width:300px; background:#fff; border:1px solid var(--faint); display:none; box-shadow:0 8px 24px rgba(0,0,0,.07); }
+  .sugg div { padding:8px 12px; cursor:pointer; font-size:15px; color:var(--ink); }
   .sugg div:hover { background:var(--bg); }
   .sugg small { color:var(--mid); margin-left:6px; font-size:12.5px; }
-  .actions { display:flex; align-items:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
-  button.go { font:600 14px var(--mono); color:#fff; background:var(--accent); border:0; border-radius:4px; padding:11px 20px; cursor:pointer; }
-  button.go:disabled { opacity:.5; cursor:default; }
-  .status { font:13px var(--mono); color:var(--mid); min-height:1.4em; }
+  .ex { display:inline-flex; gap:14px; flex-wrap:wrap; }
+  .ex a { color:var(--mid); text-decoration:none; border-bottom:1px dotted var(--faint); cursor:pointer; }
+  .ex a:hover { color:var(--ink); }
+  .status { font:13px var(--mono); color:var(--mid); }
   .status.err { color:var(--accent); }
-  .examples { margin-top:14px; }
-  .examples label { margin-bottom:8px; }
-  .chips { display:flex; flex-wrap:wrap; gap:7px; }
-  .chip { font:13px/1.2 var(--mono); border:1px solid var(--faint); border-radius:16px; padding:6px 12px; cursor:pointer; color:var(--soft); background:#fff; }
-  .chip:hover { color:var(--ink); border-color:var(--ink); }
 
-  /* ---- results ---- */
-  h2 { font:11px var(--mono); text-transform:uppercase; letter-spacing:.1em; color:var(--mid); margin:28px 0 10px; }
-  h2 span { text-transform:none; letter-spacing:0; margin-left:10px; }
-  .works { font-size:14.5px; color:var(--soft); }
-  .works div { display:grid; grid-template-columns:52px 44px 1fr; gap:8px; padding:4px 0; }
-  .works .s { font-family:var(--mono); font-size:12.5px; color:var(--mid); padding-top:2px; }
-  .works b { font-weight:400; color:var(--ink); }
-  .works .more { cursor:pointer; text-decoration:underline; display:block; }
-  .person { display:grid; grid-template-columns: 1fr auto; gap:14px; padding:14px 16px; margin:8px 0; background:var(--card); border:1px solid var(--faint); border-radius:6px; cursor:pointer; transition: border-color .15s; }
-  .person:hover { border-color:var(--soft); }
-  .person.active { border-color:var(--accent); background:linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--card); }
-  .person .name { font-size:18px; }
-  .person .inst { font-size:14px; color:var(--mid); margin-left:8px; }
-  .person .why { font-size:14.5px; color:var(--soft); margin-top:3px; }
-  .person .why b { color:var(--ink); font-weight:600; }
-  .chain { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin-top:8px; font-size:14px; }
-  .chain .n { background:#fff; border:1px solid var(--faint); border-radius:4px; padding:2px 8px; }
-  .chain .n.you { border-color:var(--ink); }
-  .chain .n.them { border-color:var(--accent); color:var(--accent); }
+  .layout { display:grid; grid-template-columns: minmax(0,1fr) 440px; gap:56px; align-items:start; margin-top:54px; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; gap:40px; } h1 { font-size:34px; } }
+  .person { padding:18px 0; border-top:1px solid var(--faint); cursor:pointer; }
+  .person:last-child { border-bottom:1px solid var(--faint); }
+  .person .top { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .person .name { font-size:21px; }
+  .person.active .name { color:var(--accent); }
+  .person .inst { font-size:14px; color:var(--mid); }
+  .person .n { margin-left:auto; font:12px var(--mono); color:var(--mid); }
+  .chain { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; margin-top:8px; font-size:14.5px; color:var(--soft); }
   .chain .arr { color:var(--mid); }
-  .chain .lbl { width:100%; font:12px var(--mono); color:var(--mid); }
-  .nopath { font:13px var(--mono); color:var(--mid); margin-top:6px; }
-  .person .eg { font-size:13.5px; color:var(--mid); margin-top:6px; font-style:italic; }
-  .person .view { font:12px var(--mono); color:var(--mid); white-space:nowrap; align-self:start; }
-  .person.active .view { color:var(--accent); }
+  .chain .them { color:var(--accent); }
+  .chain .lbl { font:12px var(--mono); color:var(--mid); margin-right:4px; }
+  .papers { margin-top:36px; }
+  .papers summary { font:12px var(--mono); color:var(--mid); cursor:pointer; text-transform:uppercase; letter-spacing:.1em; list-style:none; }
+  .papers summary::-webkit-details-marker { display:none; }
+  .papers div { display:grid; grid-template-columns:44px 1fr; gap:8px; padding:5px 0; font-size:14.5px; color:var(--soft); }
+  .papers .y { font-family:var(--mono); font-size:12.5px; color:var(--mid); padding-top:2px; }
 
-  /* ---- graph ---- */
-  .side { position:sticky; top:16px; }
-  .side h3 { font-size:19px; font-weight:400; margin:0; }
-  .side .sub { font-size:13.5px; color:var(--mid); margin:2px 0 10px; }
-  #ego { width:100%; aspect-ratio: 1/1.05; display:block; background:#fff; border:1px solid var(--faint); border-radius:4px; }
-  .legend { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:13px; color:var(--soft); margin-top:10px; }
-  .legend i { display:inline-block; width:10px; height:10px; border-radius:50%; border:1.4px solid var(--soft); vertical-align:-1px; margin-right:6px; }
-  .legend .line { display:inline-block; width:18px; height:0; border-top:3px solid var(--soft); vertical-align:middle; margin-right:6px; }
-  .readme { font-size:13.5px; color:var(--soft); margin-top:12px; border-top:1px solid var(--faint); padding-top:10px; }
-  .readme b { color:var(--ink); font-weight:600; }
+  .side { position:sticky; top:24px; }
+  .side h3 { font-size:15px; font-weight:400; margin:0 0 10px; color:var(--soft); }
+  .side h3 b { font-weight:400; color:var(--ink); }
+  #ego { width:100%; aspect-ratio: 1/1.1; display:block; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--mid); margin-top:8px; }
+  .legend i { display:inline-block; width:9px; height:9px; border-radius:50%; border:1.3px solid var(--soft); vertical-align:-1px; margin-right:6px; }
   #tip { position:fixed; pointer-events:none; z-index:20; background:var(--ink); color:#fff; padding:7px 10px; border-radius:4px; font-size:13px; display:none; max-width:260px; line-height:1.35; }
-  #tip small { color:rgba(255,255,255,.7); }
+  #tip small { color:rgba(255,255,255,.65); }
 
-  footer { margin-top:50px; font-size:13.5px; color:var(--mid); line-height:1.6; border-top:1px solid var(--faint); padding-top:14px; }
+  footer { margin-top:80px; font-size:13px; color:var(--mid); }
   footer a { color:inherit; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="hero">
-    <div>
-      <h1>Who in Sydney works on this — and how am I connected to them?</h1>
-      <p class="lede">Describe a piece of research in plain words. This finds the closest papers among <b>219,000 articles</b> by Sydney university authors, walks a graph of <b>600,000 researchers</b> and their co-authorships to the people behind those papers, and — if you say who you are — shows the <b>chain of introductions</b> from you to each of them.</p>
-      <div class="stats" id="stats">loading the graph…</div>
-    </div>
-    <ol class="steps">
-      <li><i>1</i><span><b>Describe the work.</b> A sentence or a paragraph, in your own words — not keywords.</span></li>
-      <li><i>2</i><span><b>Say who you are</b> (optional). Any name that appears on a paper. Start typing and pick from the list.</span></li>
-      <li><i>3</i><span><b>Read the people.</b> Each one is on several of the closest papers. “3 introductions” means a co-author of a co-author of a co-author. Click anyone to see who they publish with.</span></li>
-    </ol>
+  <h1>Who in Sydney works on this?</h1>
+
+  <div class="ask">
+    <textarea id="q" placeholder="Describe the research in a sentence…"></textarea>
+    <button class="go" id="go">Find people</button>
+  </div>
+  <div class="meta">
+    <span class="field">you are <input id="me" autocomplete="off" placeholder="your name, for paths to them"><div class="sugg" id="sugg"></div></span>
+    <span class="ex" id="chips"></span>
+    <span class="status" id="status"></span>
   </div>
 
-  <div class="layout">
+  <div class="layout" id="out" hidden>
     <div>
-      <div class="box">
-        <label for="q">What are you working on, or looking for?</label>
-        <textarea id="q" placeholder="e.g. spatial analysis of bushfire risk to homes using address-level data and census demographics"></textarea>
-        <div class="row">
-          <div class="field">
-            <label for="me">You are (optional)</label>
-            <input id="me" autocomplete="off" placeholder="start typing a surname…">
-            <div class="hint">Turns on the chain of introductions.</div>
-            <div class="sugg" id="sugg"></div>
-          </div>
-          <div>
-            <label for="inst">Only people at</label>
-            <select id="inst">
-              <option value="">any Sydney university</option>
-              <option>UNSW Sydney</option><option>The University of Sydney</option>
-              <option>University of Technology Sydney</option><option>Macquarie University</option>
-              <option>Western Sydney University</option>
-            </select>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="go" id="go">Find people</button>
-          <div class="status" id="status"></div>
-        </div>
-        <div class="examples">
-          <label>Or try one of these</label>
-          <div class="chips" id="chips"></div>
-        </div>
-      </div>
-
-      <div id="out" hidden>
-        <h2>People <span id="peopleN"></span></h2>
-        <div id="people"></div>
-        <h2>The papers it matched <span id="worksN"></span></h2>
-        <div class="works" id="works"></div>
-      </div>
+      <div id="people"></div>
+      <details class="papers"><summary id="worksN">the papers it matched</summary><div id="works" style="display:block;padding:8px 0 0"></div></details>
     </div>
-
     <div class="side">
-      <div class="box">
-        <h3 id="egoName">Who they publish with</h3>
-        <div class="sub" id="egoSub">Pick a person on the left to draw their network.</div>
-        <svg id="ego"></svg>
-        <div class="legend">
-          <span><i style="background:var(--accent);border-color:var(--accent)"></i>the person selected</span>
-          <span><i style="background:var(--soft)"></i>co-author at a Sydney university</span>
-          <span><i style="background:#fff"></i>co-author elsewhere</span>
-          <span><span class="line"></span>they've published together</span>
-        </div>
-        <div class="readme"><b>How to read it.</b> Bigger dots share more papers with the selected person; thicker lines are pairs who publish together often. Tight clusters are research groups. Hover a dot for the name; click one to make them the centre.</div>
+      <h3 id="egoName"></h3>
+      <svg id="ego"></svg>
+      <div class="legend">
+        <span><i style="background:var(--accent);border-color:var(--accent)"></i>selected</span>
+        <span><i style="background:var(--soft)"></i>Sydney</span>
+        <span><i style="background:#fff"></i>elsewhere</span>
+        <span>size · papers together</span>
       </div>
     </div>
   </div>
 
-  <footer>
-    Every journal article since 2019 with an author at UNSW, the University of Sydney, UTS, Macquarie or Western Sydney — 218,984 works from <a href="https://openalex.org">OpenAlex</a>, updated to August 2026. Similarity search over abstracts (pgvector) finds the papers; a graph of authors, institutions and citations (Neo4j) finds the people and the paths. Connections are co-authorship only. <a href="https://github.com/bolat-t/knowledge-graph-rag">How it's built, and what's wrong with the data</a>.
-  </footer>
+  <footer>218,984 papers by Sydney university authors since 2019, from <a href="https://openalex.org">OpenAlex</a>. Similarity finds the papers; a co-authorship graph finds the people and the paths. <a href="https://github.com/bolat-t/knowledge-graph-rag">Source</a>.</footer>
 </div>
 <div id="tip"></div>
 
 <script>
 const $ = id => document.getElementById(id);
 const EXAMPLES = [
-  ["spatial analysis of bushfire risk to homes using address-level data and census demographics", "Kamal Dua", "bushfire risk to homes"],
+  ["spatial analysis of bushfire risk to homes using address-level data and census demographics", "Kamal Dua", "bushfire risk"],
   ["large language models for clinical decision support and patient safety", "Christopher Pettit", "LLMs in clinical care"],
-  ["graph neural networks for drug discovery", "", "graph neural nets for drugs"],
-  ["forecasting electricity demand as renewables grow", "Dacheng Tao", "electricity demand forecasting"],
-  ["urban heat islands and tree canopy cover in Sydney", "", "urban heat and tree canopy"],
+  ["forecasting electricity demand as renewables grow", "Dacheng Tao", "electricity demand"],
 ];
 const SHORT = {"The University of Sydney":"University of Sydney","University of Technology Sydney":"UTS","UNSW Sydney":"UNSW","Macquarie University":"Macquarie","Western Sydney University":"Western Sydney"};
 const short = s => SHORT[s] || s;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-fetch('/api/stats').then(r=>r.json()).then(s => {
-  const n = s.nodes; $('stats').textContent = `${n.Work.toLocaleString()} papers · ${n.Author.toLocaleString()} researchers · ${n.Institution.toLocaleString()} institutions · ${s.relationships.toLocaleString()} connections`;
-}).catch(()=> $('stats').textContent = 'the databases are starting — give it a minute and reload');
+$('chips').innerHTML = 'try: ' + EXAMPLES.map((e,i)=>`<a data-i="${i}">${e[2]}</a>`).join('');
+$('chips').onclick = e => { const c=e.target.closest('a[data-i]'); if(!c) return; const [q,me]=EXAMPLES[c.dataset.i]; $('q').value=q; $('me').value=me; ask(); };
 
-$('chips').innerHTML = EXAMPLES.map((e,i)=>`<button class="chip" data-i="${i}">${e[2]}${e[1] ? ' · as ' + e[1] : ''}</button>`).join('');
-$('chips').onclick = e => { const c=e.target.closest('.chip'); if(!c) return; const [q,me]=EXAMPLES[c.dataset.i]; $('q').value=q; $('me').value=me; ask(); };
-
-// author autocomplete
 let sugT;
 $('me').addEventListener('input', () => {
   clearTimeout(sugT); const v=$('me').value.trim(); if(v.length<2){ $('sugg').style.display='none'; return; }
   sugT = setTimeout(async () => {
     const rows = await fetch('/api/authors?q='+encodeURIComponent(v)).then(r=>r.json()).catch(()=>[]);
-    $('sugg').innerHTML = rows.map(r=>`<div data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.institutions.map(short).join(' / ') || 'no current Sydney affiliation'} · ${plural(r.n_works,'paper')}</small></div>`).join('');
+    $('sugg').innerHTML = rows.map(r=>`<div data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.institutions.map(short).join(' / ') || '—'} · ${plural(r.n_works,'paper')}</small></div>`).join('');
     $('sugg').style.display = rows.length ? 'block' : 'none';
   }, 220);
 });
-$('sugg').onclick = e => { const d=e.target.closest('div[data-n]'); if(!d) return; $('me').value=d.dataset.n; $('sugg').style.display='none'; };
+$('sugg').onclick = e => { const d=e.target.closest('div[data-n]'); if(!d) return; $('me').value=d.dataset.n; $('sugg').style.display='none'; if($('q').value.trim()) ask(); };
 document.addEventListener('click', e => { if(!e.target.closest('.field')) $('sugg').style.display='none'; });
-
 $('go').onclick = ask;
 $('q').addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); ask(); } });
 
 let slowT;
 async function ask(){
   const q=$('q').value.trim(); if(q.length<3) { $('q').focus(); return; }
-  $('go').disabled=true; $('status').className='status'; $('status').textContent='reading 170,894 abstracts…';
-  slowT = setTimeout(()=> $('status').textContent='first question after a quiet spell: waking the model, ~15 s…', 4000);
-  const p = new URLSearchParams({q, k:30}); if($('me').value.trim()) p.set('me',$('me').value.trim()); if($('inst').value) p.set('institution',$('inst').value);
-  const t0=performance.now();
+  $('go').disabled=true; $('status').className='status'; $('status').textContent='searching…';
+  slowT = setTimeout(()=> $('status').textContent='waking up, ~15 s…', 4000);
+  const p = new URLSearchParams({q, k:30}); if($('me').value.trim()) p.set('me',$('me').value.trim());
   try{
     const r = await fetch('/api/ask?'+p); if(!r.ok) throw new Error(await r.text());
-    render(await r.json(), performance.now()-t0);
-  }catch(e){ $('status').textContent='something went wrong: '+e.message; $('status').className='status err'; }
+    render(await r.json());
+  }catch(e){ $('status').textContent='error: '+e.message; $('status').className='status err'; }
   clearTimeout(slowT); $('go').disabled=false;
 }
 
-function render(d, ms){
-  $('status').textContent = `${(ms/1000).toFixed(1)} s · ${d.works.length} papers · ${d.people.length} people`;
+function render(d){
+  $('status').textContent = '';
   $('out').hidden=false;
-  const ws=d.works, show=6;
-  const line = w => `<div><span class="s">${w.score.toFixed(2)}</span><span class="s">${w.year||''}</span><b>${w.title}</b></div>`;
-  $('worksN').textContent = `${ws.length} closest by meaning · score is similarity, 1.0 = identical`;
-  $('works').innerHTML = ws.slice(0,show).map(line).join('') + (ws.length>show?`<span class="more" id="moreW">show all ${ws.length}</span>`:'');
-  if(ws.length>show) $('moreW').onclick = () => { $('works').innerHTML = ws.map(line).join(''); };
-
-  const meName = d.me && d.me.name;
-  $('peopleN').textContent = meName ? `ranked by how many of the papers they're on · chains start from ${meName}` : `ranked by how many of the papers they're on · add your name above for chains of introductions`;
-  if ($('me').value.trim() && !d.me) $('peopleN').textContent = `no author called “${$('me').value.trim()}” in the graph — pick a name from the suggestions`;
+  const ws=d.works, meName = d.me && d.me.name;
+  $('worksN').textContent = `the ${ws.length} papers it matched`;
+  $('works').innerHTML = ws.map(w => `<div><span class="y">${w.year||''}</span><span>${w.title}</span></div>`).join('');
+  if ($('me').value.trim() && !d.me) $('status').textContent = `no author called “${$('me').value.trim()}” — pick from the list`;
 
   $('people').innerHTML = d.people.map(p => {
     let conn = '';
     if (p.path) {
-      const names = [meName, ...p.path.via, p.name];
-      const h = p.path.hops;
-      conn = `<div class="chain"><span class="lbl">${h === 1 ? 'a direct co-author' : `${h} introductions away`}</span>` +
-        names.map((n,i)=>`<span class="n ${i===0?'you':i===names.length-1?'them':''}">${n}</span>${i<names.length-1?'<span class="arr">→</span>':''}`).join('') + `</div>`;
+      const names = [meName, ...p.path.via, p.name], h = p.path.hops;
+      conn = `<div class="chain"><span class="lbl">${h === 1 ? 'co-author' : h + ' hops'}</span>` +
+        names.map((n,i)=>`<span class="${i===names.length-1?'them':''}">${n}</span>${i<names.length-1?'<span class="arr">→</span>':''}`).join('') + `</div>`;
     } else if (meName && d.me.id !== p.id) {
-      conn = `<div class="nopath">no co-authorship chain within 4 introductions</div>`;
-    } else if (meName && d.me.id === p.id) {
-      conn = `<div class="nopath">this is you</div>`;
+      conn = `<div class="chain"><span class="lbl">no path within 4 hops</span></div>`;
     }
     return `<div class="person" data-id="${p.id}">
-      <div>
-        <span class="name">${p.name}</span><span class="inst">${p.institutions.map(short).join(' / ')}</span>
-        <div class="why">on <b>${p.matched} of the ${ws.length}</b> closest papers · ${plural(p.n_works,'paper')} in the graph</div>
-        ${conn}
-        <div class="eg">e.g. ${p.titles[0]}</div>
-      </div>
-      <div class="view">network →</div>
+      <div class="top"><span class="name">${p.name}</span><span class="inst">${p.institutions.map(short).join(' / ')}</span><span class="n">${p.matched} of ${ws.length} papers</span></div>
+      ${conn}
     </div>`;
-  }).join('') || '<div class="works">Nobody with a current Sydney affiliation is on those papers. Try broader wording.</div>';
+  }).join('') || '<div class="person">Nobody Sydney-affiliated on those papers. Try broader wording.</div>';
   $('people').querySelectorAll('.person').forEach(el => el.onclick = () => select(el.dataset.id));
   if(d.people[0]) select(d.people[0].id);
 }
@@ -267,18 +174,16 @@ function select(id){
 
 const tip = $('tip');
 async function drawEgo(id){
-  $('egoSub').textContent='drawing…';
   const g = await fetch('/api/ego?id='+encodeURIComponent(id)+'&limit=45').then(r=>r.json());
   const c = g.centre;
-  $('egoName').textContent = `Who ${c.name} publishes with`;
-  $('egoSub').textContent = `${c.institutions.slice(0,2).map(short).join(' / ')} · ${plural(c.n_works,'paper')} · their ${g.nodes.length-1} closest co-authors`;
+  $('egoName').innerHTML = `Who <b>${c.name}</b> publishes with`;
 
   const svg=d3.select('#ego'), box=$('ego').getBoundingClientRect(), W=Math.round(box.width), H=Math.round(box.height);
   svg.attr('viewBox',`0 0 ${W} ${H}`).selectAll('*').remove();
-  const ink='#5d5751', accent='#c0392b';
+  const ink='#6b645d', accent='#c0392b';
   const nodes=g.nodes, links=g.links.map(l=>({source:l.s,target:l.t,n:l.n}));
   const maxShared = d3.max(nodes.filter(n=>!n.me), n=>n.shared) || 1;
-  const r = d => d.me ? 13 : 4 + 9*Math.sqrt(d.shared/maxShared);
+  const r = d => d.me ? 12 : 3.5 + 9*Math.sqrt(d.shared/maxShared);
 
   const sim=d3.forceSimulation(nodes)
     .force('link',d3.forceLink(links).id(d=>d.id).distance(d=>40+70/Math.sqrt(d.n)).strength(d=>Math.min(.8,d.n/6)))
@@ -286,8 +191,7 @@ async function drawEgo(id){
     .force('center',d3.forceCenter(W/2,H/2))
     .force('collide',d3.forceCollide(d=>r(d)+7).strength(.9)).stop();
   for(let i=0;i<400;i++) sim.tick();
-  // fit to the box: the layout has no idea how big the panel is
-  const xs=nodes.map(n=>n.x), ys=nodes.map(n=>n.y), pad=26;
+  const xs=nodes.map(n=>n.x), ys=nodes.map(n=>n.y), pad=30;
   const sx=(W-2*pad)/(d3.max(xs)-d3.min(xs)||1), sy=(H-2*pad)/(d3.max(ys)-d3.min(ys)||1), k=Math.min(sx,sy,1.6);
   const ox=(W - k*(d3.max(xs)+d3.min(xs)))/2, oy=(H - k*(d3.max(ys)+d3.min(ys)))/2;
   nodes.forEach(n=>{ n.x=n.x*k+ox; n.y=n.y*k+oy; });
@@ -297,48 +201,38 @@ async function drawEgo(id){
 
   const L = svg.append('g').selectAll('line').data(links).join('line')
     .attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y)
-    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.6,.1+d.n*.07)).attr('stroke-width',d=>Math.min(4,.6+d.n*.4));
+    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35));
   const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor',d=>d.me?'default':'pointer');
-  N.append('circle').attr('r',r).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.4);
-  // labels: the centre, and the strongest co-authors, placed to the right
-  // Labels: the centre below its dot, then the strongest co-authors in order,
-  // each placed right or left of its dot — whichever side does not overlap a
-  // label already placed. If neither side fits, the name stays on hover only.
-  const placed = [];
+  N.append('circle').attr('r',r).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3);
+
+  // labels: the centre below its dot; the strongest co-authors where they fit
+  const placed = [], cw = 6.6, lh = 13;
   const fits = b => !placed.some(o => b.x < o.x+o.w && b.x+b.w > o.x && b.y < o.y+o.h && b.y+b.h > o.y);
-  const lab = svg.append('g').attr('font-family','ui-monospace, Menlo, monospace').attr('paint-order','stroke').attr('stroke','#fff').attr('stroke-width',3.5).attr('stroke-linejoin','round');
-  const cw = 6.6, lh = 13;
-  const centre = nodes.find(n=>n.me);
-  const cb = {x: centre.x - centre.name.length*cw*1.05/2, y: centre.y + r(centre) + 3, w: centre.name.length*cw*1.05, h: lh};
-  placed.push(cb);
-  lab.append('text').text(centre.name).attr('x',centre.x).attr('y',cb.y+11).attr('text-anchor','middle').attr('font-size',12.5).attr('font-weight',600).attr('fill',accent);
+  const lab = svg.append('g').attr('font-family','ui-monospace, Menlo, monospace').attr('paint-order','stroke').attr('stroke','#f7f4ee').attr('stroke-width',3.5).attr('stroke-linejoin','round');
+  const cb = {x: c.x - c.name.length*cw*1.05/2, y: nodes[0].y + r(nodes[0]) + 3, w: c.name.length*cw*1.05, h: lh}; placed.push(cb);
+  lab.append('text').text(c.name).attr('x',nodes[0].x).attr('y',cb.y+11).attr('text-anchor','middle').attr('font-size',12.5).attr('font-weight',600).attr('fill',accent);
   nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).slice(0,10).forEach(d => {
     const w = d.name.length*cw;
-    for (const sideSign of [1,-1]) {
-      const b = {x: sideSign>0 ? d.x+r(d)+5 : d.x-r(d)-5-w, y: d.y-lh/2, w, h: lh};
+    for (const sg of [1,-1]) {
+      const b = {x: sg>0 ? d.x+r(d)+5 : d.x-r(d)-5-w, y: d.y-lh/2, w, h: lh};
       if (b.x < 2 || b.x+b.w > W-2) continue;
-      // also keep off other dots
       const hitsDot = nodes.some(o => o!==d && o.x > b.x-4 && o.x < b.x+b.w+4 && Math.abs(o.y-d.y) < 9);
-      if (fits(b) && !hitsDot) {
-        placed.push(b);
-        lab.append('text').text(d.name).attr('x', sideSign>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sideSign>0?'start':'end').attr('font-size',11).attr('fill','#2f2b28');
-        break;
-      }
+      if (fits(b) && !hitsDot) { placed.push(b);
+        lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f'); break; }
     }
   });
 
   N.on('mouseenter',(e,d)=>{
       const s=neigh.get(d.id);
-      N.attr('opacity',n=>s.has(n.id)?1:.18); L.attr('opacity',l=>(l.source.id===d.id||l.target.id===d.id)?1:.08);
+      N.attr('opacity',n=>s.has(n.id)?1:.15); L.attr('opacity',l=>(l.source.id===d.id||l.target.id===d.id)?1:.06);
       tip.style.display='block';
-      tip.innerHTML = `<b>${d.name}</b><br><small>${d.institution ? short(d.institution) : (d.sydney ? 'Sydney' : 'outside Sydney')}${d.me ? '' : ` · ${plural(d.shared,'paper')} with ${c.name.split(' ').slice(-1)[0]}`}</small>`;
+      tip.innerHTML = `<b>${d.name}</b><br><small>${d.institution ? short(d.institution) : (d.sydney ? 'Sydney' : 'outside Sydney')}${d.me ? '' : ` · ${plural(d.shared,'paper')} together`}</small>`;
     })
     .on('mousemove',e=>{ tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; })
     .on('mouseleave',()=>{ N.attr('opacity',1); L.attr('opacity',1); tip.style.display='none'; })
     .on('click',(e,d)=>{ if(!d.me) drawEgo(d.id); });
 }
 
-// never an empty page: run the first example on load
 window.addEventListener('load', () => { const [q,me]=EXAMPLES[0]; $('q').value=q; $('me').value=me; ask(); });
 </script>
 </body>
