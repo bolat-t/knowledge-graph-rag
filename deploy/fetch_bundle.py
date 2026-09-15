@@ -3,6 +3,10 @@ in (local builds), otherwise from the public dataset repo (Spaces builds)."""
 import shutil, sys
 from pathlib import Path
 
+# Bump when the dataset changes: the Space caches this build layer on the
+# script's content, so an unchanged script means an unchanged bundle.
+BUNDLE_VERSION = "2026-09-15b"
+
 dst = Path("/data/bundle")
 local = Path("/app/deploy/bundle")
 if local.exists() and any(local.iterdir()):
