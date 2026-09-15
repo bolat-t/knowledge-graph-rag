@@ -52,6 +52,23 @@ with node order by score desc, node.n_works desc limit 8
 optional match (node)-[:AFFILIATED_WITH]->(i:Institution {is_sydney: true})
 return node.id as id, node.name as name, node.n_works as n_works, collect(distinct i.name)[..2] as institutions
 """
+# Everything a prospective student wants to know about one researcher:
+# what they work on, where, with whom, and what they wrote recently.
+AUTHOR_PROFILE = """
+match (a:Author {id: $id})
+optional match (a)-[af:AFFILIATED_WITH]->(i:Institution)
+with a, i, af order by i.is_sydney desc, af.n_works desc
+with a, collect(distinct i.name)[..3] as institutions
+optional match (a)-[:AUTHORED]->(w:Work)-[:HAS_TOPIC {is_primary: true}]->(t:Topic)
+with a, institutions, t, count(w) as n order by n desc
+with a, institutions, collect({topic: t.name, field: t.field, n: n})[..8] as topics
+optional match (a)-[:AUTHORED]->(w:Work)
+with a, institutions, topics, w order by w.year desc, w.cited_by_count desc
+with a, institutions, topics, collect({id: w.id, title: w.title, year: w.year, cited: w.cited_by_count})[..8] as recent
+return a.id as id, a.name as name, a.n_works as n_works, a.first_year as first_year, a.last_year as last_year,
+       institutions, topics, recent
+"""
+
 STATS = """
 match (n) with labels(n)[0] as l, count(*) as c return collect({label: l, n: c}) as nodes
 """
@@ -137,6 +154,17 @@ def ask(q: str = Query(min_length=3), me: str | None = None, k: int = 25,
         "works": [{"id": w[0], "title": w[1], "year": w[2], "score": round(w[3], 3)} for w in works],
         "people": people,
     }
+
+
+@app.get("/api/author")
+def author(id: str):
+    rows = cypher(AUTHOR_PROFILE, id=id)
+    if not rows:
+        raise HTTPException(404, "unknown author id")
+    r = rows[0]
+    r["institutions"] = [short_inst(i) for i in r["institutions"] if i]
+    r["topics"] = [t for t in r["topics"] if t.get("topic")]
+    return r
 
 
 @app.get("/api/path")

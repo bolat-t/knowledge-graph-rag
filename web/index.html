@@ -10,178 +10,220 @@
           --accent:#c0392b; --mono: ui-monospace, Menlo, Consolas, monospace; }
   * { box-sizing:border-box; }
   html,body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.5 Georgia, "Iowan Old Style", "Times New Roman", serif; }
-  .wrap { max-width:1140px; margin:0 auto; padding:64px 28px 80px; }
+  .wrap { max-width:1140px; margin:0 auto; padding:56px 28px 80px; }
+  h1 { font-size:42px; line-height:1.08; font-weight:400; margin:0 0 8px; letter-spacing:-.02em; max-width:22ch; }
+  .lede { font-size:17px; color:var(--soft); margin:0 0 26px; max-width:60ch; }
 
-  h1 { font-size:44px; line-height:1.08; font-weight:400; margin:0 0 30px; letter-spacing:-.02em; max-width:18ch; }
-  .ask { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:12px; align-items:stretch; max-width:760px; }
-  textarea { width:100%; font-family:inherit; font-size:19px; line-height:1.4; color:var(--ink); background:#fff; border:1px solid var(--faint); border-radius:6px; padding:14px 16px; resize:none; height:86px; }
-  textarea:focus { outline:none; border-color:var(--ink); }
+  .modes { display:inline-flex; border:1px solid var(--faint); border-radius:6px; overflow:hidden; margin-bottom:12px; }
+  .modes button { font:13px var(--mono); padding:8px 14px; background:transparent; border:0; color:var(--mid); cursor:pointer; }
+  .modes button.on { background:var(--ink); color:#fff; }
+  .ask { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:12px; max-width:760px; position:relative; }
+  textarea, input.big { width:100%; font-family:inherit; font-size:19px; line-height:1.4; color:var(--ink); background:#fff; border:1px solid var(--faint); border-radius:6px; padding:14px 16px; }
+  textarea { resize:none; height:86px; }
+  input.big { height:58px; }
+  textarea:focus, input.big:focus { outline:none; border-color:var(--ink); }
   button.go { font:600 14px var(--mono); color:#fff; background:var(--ink); border:0; border-radius:6px; padding:0 22px; cursor:pointer; }
   button.go:disabled { opacity:.4; cursor:default; }
-  .meta { display:flex; flex-wrap:wrap; gap:8px 22px; align-items:baseline; margin:12px 0 0; max-width:760px; font-size:14px; color:var(--mid); }
-  .meta .field { position:relative; display:inline-flex; align-items:baseline; gap:8px; }
-  .meta input { font-family:inherit; font-size:15px; color:var(--ink); background:transparent; border:0; border-bottom:1px solid var(--faint); padding:2px 0; width:190px; }
-  .meta input:focus { outline:none; border-bottom-color:var(--ink); }
-  .meta input::placeholder { color:var(--mid); }
-  .sugg { position:absolute; left:0; top:100%; z-index:5; min-width:300px; background:#fff; border:1px solid var(--faint); display:none; box-shadow:0 8px 24px rgba(0,0,0,.07); }
-  .sugg div { padding:8px 12px; cursor:pointer; font-size:15px; color:var(--ink); }
+  .sugg { position:absolute; left:0; top:100%; z-index:5; min-width:360px; background:#fff; border:1px solid var(--faint); display:none; box-shadow:0 8px 24px rgba(0,0,0,.07); }
+  .sugg div { padding:9px 14px; cursor:pointer; font-size:16px; }
   .sugg div:hover { background:var(--bg); }
-  .sugg small { color:var(--mid); margin-left:6px; font-size:12.5px; }
-  .ex { display:inline-flex; gap:14px; flex-wrap:wrap; }
-  .ex a { color:var(--mid); text-decoration:none; border-bottom:1px dotted var(--faint); cursor:pointer; }
-  .ex a:hover { color:var(--ink); }
+  .sugg small { color:var(--mid); margin-left:8px; font-size:12.5px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:10px; font-size:14px; color:var(--mid); }
+  .meta a { color:var(--mid); text-decoration:none; border-bottom:1px dotted var(--faint); cursor:pointer; margin-left:12px; }
+  .meta a:hover { color:var(--ink); }
   .status { font:13px var(--mono); color:var(--mid); }
   .status.err { color:var(--accent); }
 
-  .layout { display:grid; grid-template-columns: minmax(0,1fr) 440px; gap:56px; align-items:start; margin-top:54px; }
-  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; gap:40px; } h1 { font-size:34px; } }
-  .person { padding:18px 0; border-top:1px solid var(--faint); cursor:pointer; }
+  .layout { display:grid; grid-template-columns: minmax(0,1fr) 460px; gap:56px; align-items:start; margin-top:48px; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; gap:36px; } h1 { font-size:32px; } }
+  h2 { font:11px var(--mono); text-transform:uppercase; letter-spacing:.1em; color:var(--mid); margin:0 0 6px; font-weight:400; }
+  .person { padding:14px 0; border-top:1px solid var(--faint); cursor:pointer; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
   .person:last-child { border-bottom:1px solid var(--faint); }
-  .person .top { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  .person .name { font-size:21px; }
+  .person .name { font-size:20px; }
   .person.active .name { color:var(--accent); }
   .person .inst { font-size:14px; color:var(--mid); }
   .person .n { margin-left:auto; font:12px var(--mono); color:var(--mid); }
-  .chain { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; margin-top:8px; font-size:14.5px; color:var(--soft); }
-  .chain .arr { color:var(--mid); }
-  .chain .them { color:var(--accent); }
-  .chain .lbl { font:12px var(--mono); color:var(--mid); margin-right:4px; }
-  .papers { margin-top:36px; }
+  .person .topic { width:100%; font-size:14px; color:var(--soft); }
+  .papers { margin-top:32px; }
   .papers summary { font:12px var(--mono); color:var(--mid); cursor:pointer; text-transform:uppercase; letter-spacing:.1em; list-style:none; }
   .papers summary::-webkit-details-marker { display:none; }
-  .papers div { display:grid; grid-template-columns:44px 1fr; gap:8px; padding:5px 0; font-size:14.5px; color:var(--soft); }
-  .papers .y { font-family:var(--mono); font-size:12.5px; color:var(--mid); padding-top:2px; }
+  .plist div { display:grid; grid-template-columns:44px 1fr; gap:8px; padding:5px 0; font-size:14.5px; color:var(--soft); }
+  .plist .y { font-family:var(--mono); font-size:12.5px; color:var(--mid); padding-top:2px; }
+
+  /* researcher profile */
+  .profile h3 { font-size:30px; font-weight:400; margin:0; letter-spacing:-.01em; }
+  .profile .where { font-size:15px; color:var(--soft); margin:4px 0 22px; }
+  .topics { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:26px; }
+  .topics span { font-size:13.5px; border:1px solid var(--faint); border-radius:14px; padding:4px 11px; color:var(--soft); background:#fff; }
+  .topics span b { font-weight:400; color:var(--mid); margin-left:5px; font-family:var(--mono); font-size:11px; }
+  .coauth { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:14.5px; margin-bottom:26px; }
+  .coauth a { color:var(--ink); cursor:pointer; text-decoration:none; border-bottom:1px solid var(--faint); }
+  .coauth a:hover { color:var(--accent); }
+  .coauth small { color:var(--mid); font-family:var(--mono); font-size:11px; margin-left:3px; }
 
   .side { position:sticky; top:24px; }
-  .side h3 { font-size:15px; font-weight:400; margin:0 0 10px; color:var(--soft); }
-  .side h3 b { font-weight:400; color:var(--ink); }
-  #ego { width:100%; aspect-ratio: 1/1.1; display:block; }
-  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--mid); margin-top:8px; }
+  .side h2 { margin-bottom:10px; }
+  .side h2 b { font-weight:400; text-transform:none; letter-spacing:0; font-size:15px; color:var(--ink); font-family:Georgia, serif; margin-left:6px; }
+  #ego { width:100%; aspect-ratio: 1/1.05; display:block; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--mid); margin-top:8px; }
   .legend i { display:inline-block; width:9px; height:9px; border-radius:50%; border:1.3px solid var(--soft); vertical-align:-1px; margin-right:6px; }
+  .legend a { color:var(--mid); cursor:pointer; margin-left:auto; }
   #tip { position:fixed; pointer-events:none; z-index:20; background:var(--ink); color:#fff; padding:7px 10px; border-radius:4px; font-size:13px; display:none; max-width:260px; line-height:1.35; }
   #tip small { color:rgba(255,255,255,.65); }
-
   footer { margin-top:80px; font-size:13px; color:var(--mid); }
   footer a { color:inherit; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Who in Sydney works on this?</h1>
+  <h1>Who in Sydney is working on it?</h1>
+  <p class="lede">Found a paper you like? Find out who wrote it, where they are, what else they work on and who they work with. Start from a topic, or from a name.</p>
 
+  <div class="modes"><button class="on" data-m="topic">a topic</button><button data-m="person">a researcher</button></div>
   <div class="ask">
     <textarea id="q" placeholder="Describe the research in a sentence…"></textarea>
+    <input class="big" id="who" autocomplete="off" placeholder="Start typing a researcher's name…" hidden>
     <button class="go" id="go">Find people</button>
+    <div class="sugg" id="sugg"></div>
   </div>
-  <div class="meta">
-    <span class="field">you are <input id="me" autocomplete="off" placeholder="your name, for paths to them"><div class="sugg" id="sugg"></div></span>
-    <span class="ex" id="chips"></span>
-    <span class="status" id="status"></span>
-  </div>
+  <div class="meta"><span id="chips"></span><span class="status" id="status"></span></div>
 
   <div class="layout" id="out" hidden>
-    <div>
-      <div id="people"></div>
-      <details class="papers"><summary id="worksN">the papers it matched</summary><div id="works" style="display:block;padding:8px 0 0"></div></details>
-    </div>
+    <div id="left"></div>
     <div class="side">
-      <h3 id="egoName"></h3>
+      <h2>Who they publish with<b id="egoName"></b></h2>
       <svg id="ego"></svg>
       <div class="legend">
-        <span><i style="background:var(--accent);border-color:var(--accent)"></i>selected</span>
+        <span><i style="background:var(--accent);border-color:var(--accent)"></i>this researcher</span>
         <span><i style="background:var(--soft)"></i>Sydney</span>
         <span><i style="background:#fff"></i>elsewhere</span>
-        <span>size · papers together</span>
+        <a id="replay">replay</a>
       </div>
     </div>
   </div>
 
-  <footer>218,984 papers by Sydney university authors since 2019, from <a href="https://openalex.org">OpenAlex</a>. Similarity finds the papers; a co-authorship graph finds the people and the paths. <a href="https://github.com/bolat-t/knowledge-graph-rag">Source</a>.</footer>
+  <footer>218,984 papers by Sydney university authors since 2019, from <a href="https://openalex.org">OpenAlex</a>. Similarity over abstracts finds the papers; a co-authorship graph finds the people. <a href="https://github.com/bolat-t/knowledge-graph-rag">Source</a>.</footer>
 </div>
 <div id="tip"></div>
 
 <script>
 const $ = id => document.getElementById(id);
-const EXAMPLES = [
-  ["spatial analysis of bushfire risk to homes using address-level data and census demographics", "Kamal Dua", "bushfire risk"],
-  ["large language models for clinical decision support and patient safety", "Christopher Pettit", "LLMs in clinical care"],
-  ["forecasting electricity demand as renewables grow", "Dacheng Tao", "electricity demand"],
+const TOPICS = [
+  ["spatial analysis of bushfire risk to homes using address-level data and census demographics", "bushfire risk"],
+  ["large language models for clinical decision support and patient safety", "LLMs in clinical care"],
+  ["forecasting electricity demand as renewables grow", "electricity demand"],
 ];
+const PEOPLE = ["Christopher Pettit", "Dacheng Tao", "C. Raina MacIntyre"];
 const SHORT = {"The University of Sydney":"University of Sydney","University of Technology Sydney":"UTS","UNSW Sydney":"UNSW","Macquarie University":"Macquarie","Western Sydney University":"Western Sydney"};
 const short = s => SHORT[s] || s;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+let mode = 'topic', current = null;
 
-$('chips').innerHTML = 'try: ' + EXAMPLES.map((e,i)=>`<a data-i="${i}">${e[2]}</a>`).join('');
-$('chips').onclick = e => { const c=e.target.closest('a[data-i]'); if(!c) return; const [q,me]=EXAMPLES[c.dataset.i]; $('q').value=q; $('me').value=me; ask(); };
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on', b.dataset.m===m));
+  $('q').hidden = m!=='topic'; $('who').hidden = m!=='person';
+  $('go').textContent = m==='topic' ? 'Find people' : 'Look up';
+  $('chips').innerHTML = 'try: ' + (m==='topic'
+    ? TOPICS.map((e,i)=>`<a data-t="${i}">${e[1]}</a>`).join('')
+    : PEOPLE.map(n=>`<a data-p="${n}">${n}</a>`).join(''));
+  $('sugg').style.display='none';
+}
+document.querySelector('.modes').onclick = e => { const b=e.target.closest('button'); if(b) setMode(b.dataset.m); };
+$('chips').onclick = e => {
+  const t=e.target.closest('a[data-t]'), p=e.target.closest('a[data-p]');
+  if(t){ $('q').value=TOPICS[t.dataset.t][0]; askTopic(); }
+  if(p){ $('who').value=p.dataset.p; lookup(p.dataset.p); }
+};
+$('go').onclick = () => mode==='topic' ? askTopic() : lookup($('who').value.trim());
+$('q').addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); askTopic(); } });
+$('who').addEventListener('keydown', e => { if(e.key==='Enter') { e.preventDefault(); lookup($('who').value.trim()); } });
 
+// researcher autocomplete
 let sugT;
-$('me').addEventListener('input', () => {
-  clearTimeout(sugT); const v=$('me').value.trim(); if(v.length<2){ $('sugg').style.display='none'; return; }
+$('who').addEventListener('input', () => {
+  clearTimeout(sugT); const v=$('who').value.trim(); if(v.length<2){ $('sugg').style.display='none'; return; }
   sugT = setTimeout(async () => {
     const rows = await fetch('/api/authors?q='+encodeURIComponent(v)).then(r=>r.json()).catch(()=>[]);
-    $('sugg').innerHTML = rows.map(r=>`<div data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.institutions.map(short).join(' / ') || '—'} · ${plural(r.n_works,'paper')}</small></div>`).join('');
+    $('sugg').innerHTML = rows.map(r=>`<div data-id="${r.id}" data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.institutions.map(short).join(' / ') || 'no current Sydney affiliation'} · ${plural(r.n_works,'paper')}</small></div>`).join('');
     $('sugg').style.display = rows.length ? 'block' : 'none';
-  }, 220);
+  }, 200);
 });
-$('sugg').onclick = e => { const d=e.target.closest('div[data-n]'); if(!d) return; $('me').value=d.dataset.n; $('sugg').style.display='none'; if($('q').value.trim()) ask(); };
-document.addEventListener('click', e => { if(!e.target.closest('.field')) $('sugg').style.display='none'; });
-$('go').onclick = ask;
-$('q').addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); ask(); } });
+$('sugg').onclick = e => { const d=e.target.closest('div[data-id]'); if(!d) return; $('who').value=d.dataset.n; $('sugg').style.display='none'; showResearcher(d.dataset.id); };
+document.addEventListener('click', e => { if(!e.target.closest('.ask')) $('sugg').style.display='none'; });
 
+function busy(on, msg){ $('go').disabled=on; $('status').className='status'; $('status').textContent=msg||''; }
 let slowT;
-async function ask(){
+
+async function askTopic(){
   const q=$('q').value.trim(); if(q.length<3) { $('q').focus(); return; }
-  $('go').disabled=true; $('status').className='status'; $('status').textContent='searching…';
-  slowT = setTimeout(()=> $('status').textContent='waking up, ~15 s…', 4000);
-  const p = new URLSearchParams({q, k:30}); if($('me').value.trim()) p.set('me',$('me').value.trim());
+  busy(true,'searching…'); slowT=setTimeout(()=>$('status').textContent='waking up, ~15 s…',4000);
   try{
-    const r = await fetch('/api/ask?'+p); if(!r.ok) throw new Error(await r.text());
-    render(await r.json());
+    const r = await fetch('/api/ask?'+new URLSearchParams({q, k:30})); if(!r.ok) throw new Error(await r.text());
+    renderPeople(await r.json());
   }catch(e){ $('status').textContent='error: '+e.message; $('status').className='status err'; }
-  clearTimeout(slowT); $('go').disabled=false;
+  clearTimeout(slowT); busy(false);
 }
 
-function render(d){
-  $('status').textContent = '';
+async function lookup(name){
+  if(!name) { $('who').focus(); return; }
+  busy(true,'looking up…');
+  const rows = await fetch('/api/authors?q='+encodeURIComponent(name)).then(r=>r.json()).catch(()=>[]);
+  busy(false);
+  if(!rows.length){ $('status').textContent=`no researcher called “${name}” in the graph`; return; }
+  showResearcher(rows[0].id);
+}
+
+function renderPeople(d){
   $('out').hidden=false;
-  const ws=d.works, meName = d.me && d.me.name;
-  $('worksN').textContent = `the ${ws.length} papers it matched`;
-  $('works').innerHTML = ws.map(w => `<div><span class="y">${w.year||''}</span><span>${w.title}</span></div>`).join('');
-  if ($('me').value.trim() && !d.me) $('status').textContent = `no author called “${$('me').value.trim()}” — pick from the list`;
-
-  $('people').innerHTML = d.people.map(p => {
-    let conn = '';
-    if (p.path) {
-      const names = [meName, ...p.path.via, p.name], h = p.path.hops;
-      conn = `<div class="chain"><span class="lbl">${h === 1 ? 'co-author' : h + ' hops'}</span>` +
-        names.map((n,i)=>`<span class="${i===names.length-1?'them':''}">${n}</span>${i<names.length-1?'<span class="arr">→</span>':''}`).join('') + `</div>`;
-    } else if (meName && d.me.id !== p.id) {
-      conn = `<div class="chain"><span class="lbl">no path within 4 hops</span></div>`;
-    }
-    return `<div class="person" data-id="${p.id}">
-      <div class="top"><span class="name">${p.name}</span><span class="inst">${p.institutions.map(short).join(' / ')}</span><span class="n">${p.matched} of ${ws.length} papers</span></div>
-      ${conn}
-    </div>`;
-  }).join('') || '<div class="person">Nobody Sydney-affiliated on those papers. Try broader wording.</div>';
-  $('people').querySelectorAll('.person').forEach(el => el.onclick = () => select(el.dataset.id));
-  if(d.people[0]) select(d.people[0].id);
+  const ws=d.works;
+  $('left').innerHTML = `<h2>People on the closest papers <span style="text-transform:none;letter-spacing:0">· ranked by how many</span></h2>` +
+    d.people.map(p => `<div class="person" data-id="${p.id}">
+      <span class="name">${p.name}</span><span class="inst">${p.institutions.map(short).join(' / ')}</span><span class="n">${p.matched} of ${ws.length}</span>
+      <span class="topic">${p.titles[0]}</span></div>`).join('') +
+    `<details class="papers"><summary>the ${ws.length} papers it matched</summary><div class="plist" style="padding-top:8px">` +
+    ws.map(w => `<div><span class="y">${w.year||''}</span><span>${w.title}</span></div>`).join('') + `</div></details>`;
+  $('left').querySelectorAll('.person').forEach(el => el.onclick = () => { $('left').querySelectorAll('.person').forEach(x=>x.classList.toggle('active', x===el)); drawEgo(el.dataset.id); });
+  if(d.people[0]) { $('left').querySelector('.person').classList.add('active'); drawEgo(d.people[0].id); }
 }
 
-function select(id){
-  $('people').querySelectorAll('.person').forEach(x=>x.classList.toggle('active', x.dataset.id===id));
-  drawEgo(id);
+async function showResearcher(id){
+  $('out').hidden=false;
+  busy(true,'');
+  const p = await fetch('/api/author?id='+encodeURIComponent(id)).then(r=>r.json());
+  busy(false);
+  const g = await drawEgo(id);
+  const co = g.nodes.filter(n=>!n.me).slice(0,8);
+  $('left').innerHTML = `<div class="profile">
+    <h3>${p.name}</h3>
+    <div class="where">${p.institutions.join(' · ') || 'affiliation not resolved'} · ${plural(p.n_works,'paper')} since ${p.first_year||'—'}</div>
+    <h2>Works on</h2>
+    <div class="topics">${p.topics.map(t=>`<span>${t.topic}<b>${t.n}</b></span>`).join('') || '<span>no topics resolved</span>'}</div>
+    <h2>Most often with</h2>
+    <div class="coauth">${co.map(n=>`<a data-id="${n.id}">${n.name}<small>${n.shared}</small></a>`).join('')}</div>
+    <h2>Recent papers</h2>
+    <div class="plist">${p.recent.map(w=>`<div><span class="y">${w.year||''}</span><span>${w.title}</span></div>`).join('')}</div>
+  </div>`;
+  $('left').querySelectorAll('.coauth a').forEach(a => a.onclick = () => showResearcher(a.dataset.id));
 }
 
+// ---- the network, drawn as it grows ----
 const tip = $('tip');
+let lastEgo = null;
+$('replay').onclick = () => lastEgo && animate(lastEgo);
+
 async function drawEgo(id){
   const g = await fetch('/api/ego?id='+encodeURIComponent(id)+'&limit=45').then(r=>r.json());
-  const c = g.centre;
-  $('egoName').innerHTML = `Who <b>${c.name}</b> publishes with`;
+  lastEgo = g; animate(g); return g;
+}
 
+function animate(g){
+  const c = g.centre;
+  $('egoName').textContent = c.name;
   const svg=d3.select('#ego'), box=$('ego').getBoundingClientRect(), W=Math.round(box.width), H=Math.round(box.height);
   svg.attr('viewBox',`0 0 ${W} ${H}`).selectAll('*').remove();
   const ink='#6b645d', accent='#c0392b';
-  const nodes=g.nodes, links=g.links.map(l=>({source:l.s,target:l.t,n:l.n}));
+  const nodes=g.nodes.map(n=>({...n})), links=g.links.map(l=>({source:l.s,target:l.t,n:l.n}));
   const maxShared = d3.max(nodes.filter(n=>!n.me), n=>n.shared) || 1;
   const r = d => d.me ? 12 : 3.5 + 9*Math.sqrt(d.shared/maxShared);
 
@@ -192,25 +234,35 @@ async function drawEgo(id){
     .force('collide',d3.forceCollide(d=>r(d)+7).strength(.9)).stop();
   for(let i=0;i<400;i++) sim.tick();
   const xs=nodes.map(n=>n.x), ys=nodes.map(n=>n.y), pad=30;
-  const sx=(W-2*pad)/(d3.max(xs)-d3.min(xs)||1), sy=(H-2*pad)/(d3.max(ys)-d3.min(ys)||1), k=Math.min(sx,sy,1.6);
+  const k=Math.min((W-2*pad)/(d3.max(xs)-d3.min(xs)||1),(H-2*pad)/(d3.max(ys)-d3.min(ys)||1),1.6);
   const ox=(W - k*(d3.max(xs)+d3.min(xs)))/2, oy=(H - k*(d3.max(ys)+d3.min(ys)))/2;
   nodes.forEach(n=>{ n.x=n.x*k+ox; n.y=n.y*k+oy; });
 
+  // order of appearance: the centre, then co-authors by strength; a link
+  // appears with the later of its two ends and grows out of the earlier one
+  const order = new Map(); nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).forEach((n,i)=>order.set(n.id,i+1)); order.set(nodes.find(n=>n.me).id,0);
+  const when = d => order.get(d.id);
+  const STEP = 55, GROW = 420;
   const neigh = new Map(nodes.map(n=>[n.id,new Set([n.id])]));
   links.forEach(l=>{ neigh.get(l.source.id).add(l.target.id); neigh.get(l.target.id).add(l.source.id); });
 
   const L = svg.append('g').selectAll('line').data(links).join('line')
-    .attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y)
-    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35));
-  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor',d=>d.me?'default':'pointer');
-  N.append('circle').attr('r',r).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3);
+    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35))
+    .each(function(d){ const first = when(d.source) <= when(d.target) ? d.source : d.target; d.from=first; d.to = first===d.source ? d.target : d.source; })
+    .attr('x1',d=>d.from.x).attr('y1',d=>d.from.y).attr('x2',d=>d.from.x).attr('y2',d=>d.from.y);
+  L.transition().delay(d=>when(d.to)*STEP).duration(GROW).ease(d3.easeCubicOut).attr('x2',d=>d.to.x).attr('y2',d=>d.to.y);
 
-  // labels: the centre below its dot; the strongest co-authors where they fit
+  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor',d=>d.me?'default':'pointer');
+  N.append('circle').attr('r',0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3)
+    .transition().delay(d=>when(d)*STEP).duration(380).ease(d3.easeBackOut.overshoot(1.6)).attr('r',r);
+
+  // labels: centre below its dot; strongest co-authors where they fit; fade in last
   const placed = [], cw = 6.6, lh = 13;
   const fits = b => !placed.some(o => b.x < o.x+o.w && b.x+b.w > o.x && b.y < o.y+o.h && b.y+b.h > o.y);
   const lab = svg.append('g').attr('font-family','ui-monospace, Menlo, monospace').attr('paint-order','stroke').attr('stroke','#f7f4ee').attr('stroke-width',3.5).attr('stroke-linejoin','round');
-  const cb = {x: c.x - c.name.length*cw*1.05/2, y: nodes[0].y + r(nodes[0]) + 3, w: c.name.length*cw*1.05, h: lh}; placed.push(cb);
-  lab.append('text').text(c.name).attr('x',nodes[0].x).attr('y',cb.y+11).attr('text-anchor','middle').attr('font-size',12.5).attr('font-weight',600).attr('fill',accent);
+  const me = nodes.find(n=>n.me);
+  const cb = {x: me.x - me.name.length*cw*1.05/2, y: me.y + r(me) + 3, w: me.name.length*cw*1.05, h: lh}; placed.push(cb);
+  lab.append('text').text(me.name).attr('x',me.x).attr('y',cb.y+11).attr('text-anchor','middle').attr('font-size',12.5).attr('font-weight',600).attr('fill',accent).attr('opacity',0).transition().delay(300).duration(400).attr('opacity',1);
   nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).slice(0,10).forEach(d => {
     const w = d.name.length*cw;
     for (const sg of [1,-1]) {
@@ -218,7 +270,8 @@ async function drawEgo(id){
       if (b.x < 2 || b.x+b.w > W-2) continue;
       const hitsDot = nodes.some(o => o!==d && o.x > b.x-4 && o.x < b.x+b.w+4 && Math.abs(o.y-d.y) < 9);
       if (fits(b) && !hitsDot) { placed.push(b);
-        lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f'); break; }
+        lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f')
+          .attr('opacity',0).transition().delay(when(d)*STEP+300).duration(400).attr('opacity',1); break; }
     }
   });
 
@@ -226,14 +279,15 @@ async function drawEgo(id){
       const s=neigh.get(d.id);
       N.attr('opacity',n=>s.has(n.id)?1:.15); L.attr('opacity',l=>(l.source.id===d.id||l.target.id===d.id)?1:.06);
       tip.style.display='block';
-      tip.innerHTML = `<b>${d.name}</b><br><small>${d.institution ? short(d.institution) : (d.sydney ? 'Sydney' : 'outside Sydney')}${d.me ? '' : ` · ${plural(d.shared,'paper')} together`}</small>`;
+      tip.innerHTML = `<b>${d.name}</b><br><small>${d.institution ? short(d.institution) : (d.sydney ? 'Sydney' : 'outside Sydney')}${d.me ? '' : ` · ${plural(d.shared,'paper')} together · click to open`}</small>`;
     })
     .on('mousemove',e=>{ tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; })
     .on('mouseleave',()=>{ N.attr('opacity',1); L.attr('opacity',1); tip.style.display='none'; })
-    .on('click',(e,d)=>{ if(!d.me) drawEgo(d.id); });
+    .on('click',(e,d)=>{ if(!d.me) { tip.style.display='none'; showResearcher(d.id); } });
 }
 
-window.addEventListener('load', () => { const [q,me]=EXAMPLES[0]; $('q').value=q; $('me').value=me; ask(); });
+setMode('topic');
+window.addEventListener('load', () => { $('q').value=TOPICS[0][0]; askTopic(); });
 </script>
 </body>
 </html>
