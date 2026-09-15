@@ -286,26 +286,27 @@ function animate(g){
   // appears with the later of its two ends and grows out of the earlier one
   const order = new Map(); nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).forEach((n,i)=>order.set(n.id,i+1)); order.set(nodes.find(n=>n.me).id,0);
   const when = d => order.get(d.id);
-  const STEP = 45, GROW = 500;
+  const STEP = 95, GROW = 500;
   const neigh = new Map(nodes.map(n=>[n.id,new Set([n.id])]));
   links.forEach(l=>{ neigh.get(l.source.id).add(l.target.id); neigh.get(l.target.id).add(l.source.id); });
 
-  // Each node flies out from the root to its place, strongest co-authors
-  // first. Once it has landed, its links draw themselves out from the nodes
-  // already on screen towards it -- a line is never simply there.
+  // Like a flower: a stem grows out from the root, the bud opens at its tip,
+  // then the next stem. Strongest co-authors first. Links between siblings
+  // fill in after both ends are open, drawn from the earlier one.
   const root = nodes.find(n=>n.me);
-  const FLY = GROW, DRAW = 380;
-  const landed = d => d.me ? 0 : when(d)*STEP + FLY;
-  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',`translate(${root.x},${root.y})`).style('cursor',d=>d.me?'default':'pointer');
-  N.append('circle').attr('r',d=>d.me?r(d):0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3);
-  N.filter(d=>!d.me).transition().delay(d=>when(d)*STEP).duration(FLY).ease(d3.easeCubicOut).attr('transform',d=>`translate(${d.x},${d.y})`);
-  N.select('circle').transition().delay(d=>when(d)*STEP).duration(380).ease(d3.easeBackOut.overshoot(1.4)).attr('r',r);
-
-  const L = svg.insert('g', ':first-child').selectAll('line').data(links).join('line')
+  const DRAW = 320;
+  const landed = d => d.me ? 0 : when(d)*STEP + DRAW;
+  const L = svg.append('g').selectAll('line').data(links).join('line')
     .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35))
     .each(d => { const a = when(d.source) <= when(d.target); d.from = a ? d.source : d.target; d.to = a ? d.target : d.source; })
     .attr('x1',d=>d.from.x).attr('y1',d=>d.from.y).attr('x2',d=>d.from.x).attr('y2',d=>d.from.y);
-  L.transition().delay(d=>landed(d.to)).duration(DRAW).ease(d3.easeCubicOut).attr('x2',d=>d.to.x).attr('y2',d=>d.to.y);
+  // stems (root -> node) start when it is that node's turn; cross-links wait for both buds
+  L.transition().delay(d => d.from.me ? when(d.to)*STEP : landed(d.to)).duration(DRAW).ease(d3.easeCubicOut)
+    .attr('x2',d=>d.to.x).attr('y2',d=>d.to.y);
+
+  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor',d=>d.me?'default':'pointer');
+  N.append('circle').attr('r',d=>d.me?r(d):0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3)
+    .transition().delay(d=>landed(d)-60).duration(360).ease(d3.easeBackOut.overshoot(1.8)).attr('r',r);
 
   // labels: centre below its dot; strongest co-authors where they fit; fade in last
   const placed = [], cw = 6.6, lh = 13;
@@ -322,7 +323,7 @@ function animate(g){
       const hitsDot = nodes.some(o => o!==d && o.x > b.x-4 && o.x < b.x+b.w+4 && Math.abs(o.y-d.y) < 9);
       if (fits(b) && !hitsDot) { placed.push(b);
         lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f')
-          .attr('opacity',0).transition().delay(landed(d)+DRAW).duration(400).attr('opacity',1); break; }
+          .attr('opacity',0).transition().delay(landed(d)+200).duration(400).attr('opacity',1); break; }
     }
   });
 
