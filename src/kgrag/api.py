@@ -30,8 +30,11 @@ STATE: dict = {}
 EGO_NEIGHBOURS = """
 match (me:Author {id: $id})-[:AUTHORED]->(w:Work)<-[:AUTHORED]-(c:Author)
 with c, count(w) as shared order by shared desc limit $limit
-optional match (c)-[:AFFILIATED_WITH]->(i:Institution {is_sydney: true})
-return c.id as id, c.name as name, shared, count(i) > 0 as sydney
+optional match (c)-[af:AFFILIATED_WITH]->(i:Institution)
+with c, shared, i, af order by i.is_sydney desc, af.n_works desc
+with c, shared, collect(i)[0] as inst
+return c.id as id, c.name as name, shared,
+       coalesce(inst.is_sydney, false) as sydney, inst.name as institution, c.n_works as n_works
 """
 EGO_LINKS = """
 unwind $ids as x unwind $ids as y with x, y where x < y
