@@ -290,23 +290,22 @@ function animate(g){
   const neigh = new Map(nodes.map(n=>[n.id,new Set([n.id])]));
   links.forEach(l=>{ neigh.get(l.source.id).add(l.target.id); neigh.get(l.target.id).add(l.source.id); });
 
-  // Everything starts on the root and flies out to its place, strongest
-  // co-authors first; each link follows the ends it connects.
+  // Each node flies out from the root to its place, strongest co-authors
+  // first. Once it has landed, its links draw themselves out from the nodes
+  // already on screen towards it -- a line is never simply there.
   const root = nodes.find(n=>n.me);
-  const posAt = (d, t) => { if (d.me) return [d.x, d.y]; const e = d3.easeCubicOut(t); return [root.x + (d.x-root.x)*e, root.y + (d.y-root.y)*e]; };
-  const L = svg.append('g').selectAll('line').data(links).join('line')
-    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35))
-    .attr('x1',root.x).attr('y1',root.y).attr('x2',root.x).attr('y2',root.y).attr('opacity',0);
+  const FLY = GROW, DRAW = 380;
+  const landed = d => d.me ? 0 : when(d)*STEP + FLY;
   const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',`translate(${root.x},${root.y})`).style('cursor',d=>d.me?'default':'pointer');
   N.append('circle').attr('r',d=>d.me?r(d):0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3);
-  N.transition().delay(d=>when(d)*STEP).duration(GROW+200).ease(d3.easeCubicOut)
-    .attrTween('transform', d => t => { const [x,y]=posAt(d,t); return `translate(${x},${y})`; });
+  N.filter(d=>!d.me).transition().delay(d=>when(d)*STEP).duration(FLY).ease(d3.easeCubicOut).attr('transform',d=>`translate(${d.x},${d.y})`);
   N.select('circle').transition().delay(d=>when(d)*STEP).duration(380).ease(d3.easeBackOut.overshoot(1.4)).attr('r',r);
-  L.transition().delay(d=>Math.max(when(d.source),when(d.target))*STEP).duration(GROW+200).ease(d3.easeCubicOut).attr('opacity',1)
-    .attrTween('x1', d => t => posAt(d.source, when(d.source)>=when(d.target)?t:1)[0])
-    .attrTween('y1', d => t => posAt(d.source, when(d.source)>=when(d.target)?t:1)[1])
-    .attrTween('x2', d => t => posAt(d.target, when(d.target)>=when(d.source)?t:1)[0])
-    .attrTween('y2', d => t => posAt(d.target, when(d.target)>=when(d.source)?t:1)[1]);
+
+  const L = svg.insert('g', ':first-child').selectAll('line').data(links).join('line')
+    .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35))
+    .each(d => { const a = when(d.source) <= when(d.target); d.from = a ? d.source : d.target; d.to = a ? d.target : d.source; })
+    .attr('x1',d=>d.from.x).attr('y1',d=>d.from.y).attr('x2',d=>d.from.x).attr('y2',d=>d.from.y);
+  L.transition().delay(d=>landed(d.to)).duration(DRAW).ease(d3.easeCubicOut).attr('x2',d=>d.to.x).attr('y2',d=>d.to.y);
 
   // labels: centre below its dot; strongest co-authors where they fit; fade in last
   const placed = [], cw = 6.6, lh = 13;
@@ -323,7 +322,7 @@ function animate(g){
       const hitsDot = nodes.some(o => o!==d && o.x > b.x-4 && o.x < b.x+b.w+4 && Math.abs(o.y-d.y) < 9);
       if (fits(b) && !hitsDot) { placed.push(b);
         lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f')
-          .attr('opacity',0).transition().delay(when(d)*STEP+GROW).duration(400).attr('opacity',1); break; }
+          .attr('opacity',0).transition().delay(landed(d)+DRAW).duration(400).attr('opacity',1); break; }
     }
   });
 
