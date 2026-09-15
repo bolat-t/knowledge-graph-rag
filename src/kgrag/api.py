@@ -130,6 +130,19 @@ def warm_up():
             cypher(q)
         qv = STATE["model"].encode(QUERY_PREFIX + "bushfire", normalize_embeddings=True)
         STATE["pg"].execute(SIMILAR_WORKS, (qv, qv, 5)).fetchall()
+        # The page's example buttons: compute them now so the first click is instant.
+        for q in ("spatial analysis of bushfire risk to homes using address-level data and census demographics",
+                  "large language models for clinical decision support and patient safety",
+                  "forecasting electricity demand as renewables grow"):
+            ask(q=q, k=30)
+        for name in ("Christopher Pettit", "Dacheng Tao", "C. Raina MacIntyre"):
+            r = cypher(RESOLVE_AUTHOR, name=name)
+            if r:
+                author_profile(r[0]["id"])
+        for q in ("unsw", "csiro", "university of oxford"):
+            r = cypher(SEARCH_INSTITUTIONS, q=q)
+            if r:
+                institution_profile(r[0]["id"], 40)
         STATE["warm"] = True
     except Exception as e:  # noqa: BLE001
         STATE["warm"] = f"failed: {e}"
