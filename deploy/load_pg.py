@@ -27,6 +27,6 @@ t = time.time()
 # Serial build: a parallel one puts the graph in shared memory, and /dev/shm
 # inside a docker build is 64 MB.
 con.execute("set max_parallel_maintenance_workers = 0")
-con.execute("set maintenance_work_mem = '768MB'")
+con.execute("set maintenance_work_mem = '384MB'")
 con.execute("create index work_text_embedding_idx on work_text using hnsw (embedding vector_cosine_ops)")
 print(f"  hnsw index in {time.time() - t:.0f}s", flush=True)

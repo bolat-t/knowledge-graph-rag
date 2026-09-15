@@ -49,8 +49,12 @@ RUN initdb -D /data/pg --auth=trust -U kgrag --encoding=UTF8 --locale=C.UTF-8 >/
     && rm /data/bundle/work_text.parquet
 
 # Neo4j: bulk import, set password, memory sized for a 16 GB Space.
+# The import is explicitly capped: the Space *build* container has less memory
+# than the runtime, and an uncapped JVM sizes itself off the host and gets
+# OOM-killed at the relationship-linking step.
 RUN gunzip /data/bundle/neo4j/*.gz \
-    && neo4j-admin database import full neo4j --overwrite-destination --id-type=string \
+    && HEAP_SIZE=1G neo4j-admin database import full neo4j --overwrite-destination --id-type=string \
+         --max-off-heap-memory=700m --threads=2 \
          --skip-bad-relationships --bad-tolerance=100000 \
          --nodes=Work=/data/bundle/neo4j/work.csv --nodes=Author=/data/bundle/neo4j/author.csv \
          --nodes=Institution=/data/bundle/neo4j/institution.csv --nodes=Topic=/data/bundle/neo4j/topic.csv \
