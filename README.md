@@ -28,7 +28,7 @@ Embeddings find the works. The graph turns them into people and a path.
 
 ## Status
 
-Built. Full corpus in both stores; web app in `web/` + `kgrag.api`; deploys to a Hugging Face Space from the `Dockerfile`.
+Live at **https://bolat-t-knowledge-graph-rag.hf.space**. Full corpus in both stores; web app in `web/` + `kgrag.api`; deployed as a Hugging Face Space from the `Dockerfile`.
 
 | Stage | State |
 |---|---|
@@ -40,7 +40,7 @@ Built. Full corpus in both stores; web app in `web/` + `kgrag.api`; deploys to a
 | Hybrid query (vector → graph) | ✅ `ask` — vector top-k → people → shortest path to you |
 | Graph-only questions | ✅ `explore` — collaborators, path, bridges, reach |
 | Web app | ✅ `kgrag.api` + `web/index.html` — ask box, author autocomplete, paths, ego network |
-| Hosted demo | 🔄 one container (Neo4j + pgvector + app, databases loaded at build) on an always-free Oracle A1 VM — HF Docker Spaces now need PRO |
+| Hosted demo | ✅ **https://bolat-t-knowledge-graph-rag.hf.space** — one container (Neo4j + pgvector + app), databases loaded at build, 19 s cold start |
 | Write-up | ⬜ |
 
 ## Stack
@@ -110,6 +110,10 @@ Measured, not assumed — the numbers come from `shape`'s report.
 - **Only 3.5% of references point inside the corpus** (378k of 10.8 M). The rest
   are stub ids for works outside it. `CITES` edges are corpus-internal; the
   full reference lists stay in DuckDB for expansion later.
+- **The Space build container has less memory than the Space.** The image
+  built fine locally under a 16 GB cap and was OOM-killed on Hugging Face at
+  Neo4j's relationship-linking step: an uncapped `neo4j-admin import` sizes its
+  JVM off the host. `HEAP_SIZE=1G --max-off-heap-memory=700m` fixed it.
 - **A bare `initdb` gives you SQL_ASCII, and psycopg then returns bytes.** The
   first Space image loaded and indexed pgvector cleanly and answered every
   question with nobody: the work ids came back as `b'W4415108811'` and matched
