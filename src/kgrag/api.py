@@ -8,7 +8,9 @@ only client. Runs on 7860 because Hugging Face Spaces expects that.
 """
 from __future__ import annotations
 
+import threading
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 import psycopg
@@ -36,10 +38,14 @@ with c, shared, collect(i)[0] as inst
 return c.id as id, c.name as name, shared,
        coalesce(inst.is_sydney, false) as sydney, inst.name as institution, c.n_works as n_works
 """
+# Co-authorship among a set of authors. Set-based: expand each author's works
+# once and keep the co-authors that are in the set, rather than 990 pairwise
+# lookups that each re-expand a prolific author's 500 papers.
 EGO_LINKS = """
-unwind $ids as x unwind $ids as y with x, y where x < y
-match (a:Author {id: x})-[:AUTHORED]->(w:Work)<-[:AUTHORED]-(b:Author {id: y})
-return x as s, y as t, count(w) as n
+match (a:Author) where a.id in $ids
+match (a)-[:AUTHORED]->(w:Work)<-[:AUTHORED]-(b:Author)
+where b.id in $ids and a.id < b.id
+return a.id as s, b.id as t, count(w) as n
 """
 AUTHOR_BY_ID = """
 match (a:Author {id: $id})
@@ -111,12 +117,32 @@ match (n) with labels(n)[0] as l, count(*) as c return collect({label: l, n: c})
 """
 
 
+def warm_up():
+    """Touch the stores once so the first visitor does not pay for cold disk.
+    The whole Neo4j store (~630 MB) fits in the page cache; a 17 s first
+    institution query becomes 2 s. Runs in a thread; requests work meanwhile."""
+    try:
+        STATE["model"].encode(QUERY_PREFIX + "warm up", normalize_embeddings=True)
+        for q in ("match (:Author)-[r:AUTHORED]->(:Work) return count(r)",
+                  "match (:Work)-[r:FROM_INSTITUTION]->(:Institution) return count(r)",
+                  "match (:Author)-[r:AFFILIATED_WITH]->(:Institution) return count(r)",
+                  "match (:Work)-[r:HAS_TOPIC]->(:Topic) return count(r)"):
+            cypher(q)
+        qv = STATE["model"].encode(QUERY_PREFIX + "bushfire", normalize_embeddings=True)
+        STATE["pg"].execute(SIMILAR_WORKS, (qv, qv, 5)).fetchall()
+        STATE["warm"] = True
+    except Exception as e:  # noqa: BLE001
+        STATE["warm"] = f"failed: {e}"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     STATE["model"] = SentenceTransformer(MODEL, device="cpu")
     STATE["neo4j"] = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     STATE["pg"] = psycopg.connect(PG_DSN, autocommit=True)
     register_vector(STATE["pg"])
+    STATE["warm"] = False
+    threading.Thread(target=warm_up, daemon=True).start()
     yield
     STATE["neo4j"].close()
     STATE["pg"].close()
@@ -140,7 +166,7 @@ def health():
     try:
         cypher("return 1")
         STATE["pg"].execute("select 1")
-        return {"ok": True}
+        return {"ok": True, "warm": STATE.get("warm")}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(503, str(e))
 
@@ -190,17 +216,25 @@ def ask(q: str = Query(min_length=3), me: str | None = None, k: int = 25,
         "me": me_row,
         "works": [{"id": w[0], "title": w[1], "year": w[2], "score": round(w[3], 3)} for w in works],
         "people": people,
+        # the graph for the first person, so the page draws without a second round trip
+        "ego": ego_graph(people[0]["id"]) if people else None,
     }
 
 
 @app.get("/api/author")
 def author(id: str):
+    return author_profile(id)
+
+
+@lru_cache(maxsize=2048)
+def author_profile(id: str):
     rows = cypher(AUTHOR_PROFILE, id=id)
     if not rows:
         raise HTTPException(404, "unknown author id")
     r = rows[0]
     r["institutions"] = [short_inst(i) for i in r["institutions"] if i]
     r["topics"] = [t for t in r["topics"] if t.get("topic")]
+    r["graph"] = ego_graph(id)
     return r
 
 
@@ -214,6 +248,11 @@ def institutions(q: str = Query(min_length=2)):
 
 @app.get("/api/institution")
 def institution(id: str, limit: int = 40):
+    return institution_profile(id, limit)
+
+
+@lru_cache(maxsize=512)
+def institution_profile(id: str, limit: int = 40):
     rows = cypher(INSTITUTION_BASIC, id=id)
     if not rows:
         raise HTTPException(404, "unknown institution id")
@@ -261,19 +300,30 @@ def collaborators():
     return cypher(EXPLORE["collaborators"])
 
 
-@app.get("/api/ego")
-def ego(id: str, limit: int = 50):
+# The graph is static for the life of the process, so the heavier answers are
+# memoised: a second visit to the same person or institution is instant.
+@lru_cache(maxsize=2048)
+def ego_graph(id: str, limit: int = 45):
     me = cypher(AUTHOR_BY_ID, id=id)
     if not me:
-        raise HTTPException(404, "unknown author id")
+        return None
     me = me[0]
     nodes = cypher(EGO_NEIGHBOURS, id=id, limit=limit)
-    links = cypher(EGO_LINKS, ids=[n["id"] for n in nodes])
+    links = cypher(EGO_LINKS, ids=[n["id"] for n in nodes] + [id])
+    links = [l for l in links if l["s"] != id and l["t"] != id]
     return {
         "centre": me,
         "nodes": [{"id": me["id"], "name": me["name"], "shared": 0, "sydney": True, "me": True}] + nodes,
         "links": [{"s": me["id"], "t": n["id"], "n": n["shared"]} for n in nodes] + links,
     }
+
+
+@app.get("/api/ego")
+def ego(id: str, limit: int = 45):
+    g = ego_graph(id, limit)
+    if not g:
+        raise HTTPException(404, "unknown author id")
+    return g
 
 
 @app.get("/")

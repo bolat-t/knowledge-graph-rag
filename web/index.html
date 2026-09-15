@@ -228,7 +228,7 @@ function renderPeople(d){
     `<details class="papers"><summary>the ${ws.length} papers it matched</summary><div class="plist" style="padding-top:8px">` +
     ws.map(w => `<div><span class="y">${w.year||''}</span><span>${w.title}</span></div>`).join('') + `</div></details>`;
   $('left').querySelectorAll('.person').forEach(el => el.onclick = () => { $('left').querySelectorAll('.person').forEach(x=>x.classList.toggle('active', x===el)); drawEgo(el.dataset.id); });
-  if(d.people[0]) { $('left').querySelector('.person').classList.add('active'); drawEgo(d.people[0].id); }
+  if(d.people[0]) { $('left').querySelector('.person').classList.add('active'); if(d.ego){ lastEgo = d.ego; animate(d.ego); } else drawEgo(d.people[0].id); }
 }
 
 async function showResearcher(id){
@@ -236,7 +236,7 @@ async function showResearcher(id){
   busy(true,'');
   const p = await fetch('/api/author?id='+encodeURIComponent(id)).then(r=>r.json());
   busy(false);
-  const g = await drawEgo(id);
+  const g = p.graph; lastEgo = g; animate(g);
   const co = g.nodes.filter(n=>!n.me).slice(0,8);
   $('left').innerHTML = `<div class="profile">
     <h3>${p.name}</h3>
