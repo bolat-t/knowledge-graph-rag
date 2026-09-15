@@ -77,12 +77,13 @@
 <body>
 <div class="wrap">
   <h1>Who in Sydney is working on it?</h1>
-  <p class="lede">Found a paper you like? Find out who wrote it, where they are, what else they work on and who they work with. Start from a topic, or from a name.</p>
+  <p class="lede">Found a paper you like? Find out who wrote it, where they are, what else they work on and who they work with. Start from a topic, a name, or a place.</p>
 
-  <div class="modes"><button class="on" data-m="topic">a topic</button><button data-m="person">a researcher</button></div>
+  <div class="modes"><button class="on" data-m="topic">a topic</button><button data-m="person">a researcher</button><button data-m="inst">an institution</button></div>
   <div class="ask">
     <textarea id="q" placeholder="Describe the research in a sentence…"></textarea>
     <input class="big" id="who" autocomplete="off" placeholder="Start typing a researcher's name…" hidden>
+    <input class="big" id="org" autocomplete="off" placeholder="Start typing an institution…" hidden>
     <button class="go" id="go">Find people</button>
     <div class="sugg" id="sugg"></div>
   </div>
@@ -91,10 +92,10 @@
   <div class="layout" id="out" hidden>
     <div id="left"></div>
     <div class="side">
-      <h2>Who they publish with<b id="egoName"></b></h2>
+      <h2>Publishes with<b id="egoName"></b></h2>
       <svg id="ego"></svg>
       <div class="legend">
-        <span><i style="background:var(--accent);border-color:var(--accent)"></i>this researcher</span>
+        <span><i style="background:var(--accent);border-color:var(--accent)"></i>the one you picked</span>
         <span><i style="background:var(--soft)"></i>Sydney</span>
         <span><i style="background:#fff"></i>elsewhere</span>
         <a id="replay">replay</a>
@@ -114,6 +115,7 @@ const TOPICS = [
   ["forecasting electricity demand as renewables grow", "electricity demand"],
 ];
 const PEOPLE = ["Christopher Pettit", "Dacheng Tao", "C. Raina MacIntyre"];
+const ORGS = ["UNSW", "CSIRO", "University of Oxford"];
 const SHORT = {"The University of Sydney":"University of Sydney","University of Technology Sydney":"UTS","UNSW Sydney":"UNSW","Macquarie University":"Macquarie","Western Sydney University":"Western Sydney"};
 const short = s => SHORT[s] || s;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -122,20 +124,30 @@ let mode = 'topic', current = null;
 function setMode(m){
   mode = m;
   document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on', b.dataset.m===m));
-  $('q').hidden = m!=='topic'; $('who').hidden = m!=='person';
+  $('q').hidden = m!=='topic'; $('who').hidden = m!=='person'; $('org').hidden = m!=='inst';
   $('go').textContent = m==='topic' ? 'Find people' : 'Look up';
-  $('chips').innerHTML = 'try: ' + (m==='topic'
-    ? TOPICS.map((e,i)=>`<a data-t="${i}">${e[1]}</a>`).join('')
-    : PEOPLE.map(n=>`<a data-p="${n}">${n}</a>`).join(''));
+  $('chips').innerHTML = 'try: ' + (m==='topic' ? TOPICS.map((e,i)=>`<a data-t="${i}">${e[1]}</a>`).join('')
+    : m==='person' ? PEOPLE.map(n=>`<a data-p="${n}">${n}</a>`).join('')
+    : ORGS.map(n=>`<a data-o="${n}">${n}</a>`).join(''));
   $('sugg').style.display='none';
 }
 document.querySelector('.modes').onclick = e => { const b=e.target.closest('button'); if(b) setMode(b.dataset.m); };
 $('chips').onclick = e => {
-  const t=e.target.closest('a[data-t]'), p=e.target.closest('a[data-p]');
+  const t=e.target.closest('a[data-t]'), p=e.target.closest('a[data-p]'), o=e.target.closest('a[data-o]');
   if(t){ $('q').value=TOPICS[t.dataset.t][0]; askTopic(); }
   if(p){ $('who').value=p.dataset.p; lookup(p.dataset.p); }
+  if(o){ $('org').value=o.dataset.o; lookupOrg(o.dataset.o); }
 };
-$('go').onclick = () => mode==='topic' ? askTopic() : lookup($('who').value.trim());
+$('go').onclick = () => mode==='topic' ? askTopic() : mode==='person' ? lookup($('who').value.trim()) : lookupOrg($('org').value.trim());
+$('org').addEventListener('keydown', e => { if(e.key==='Enter') { e.preventDefault(); lookupOrg($('org').value.trim()); } });
+$('org').addEventListener('input', () => {
+  clearTimeout(sugT); const v=$('org').value.trim(); if(v.length<2){ $('sugg').style.display='none'; return; }
+  sugT = setTimeout(async () => {
+    const rows = await fetch('/api/institutions?q='+encodeURIComponent(v)).then(r=>r.json()).catch(()=>[]);
+    $('sugg').innerHTML = rows.map(r=>`<div data-oid="${r.id}" data-n="${r.name.replace(/"/g,'&quot;')}">${r.name}<small>${r.country||''} · ${plural(r.n,'authorship')}</small></div>`).join('');
+    $('sugg').style.display = rows.length ? 'block' : 'none';
+  }, 200);
+});
 $('q').addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); askTopic(); } });
 $('who').addEventListener('keydown', e => { if(e.key==='Enter') { e.preventDefault(); lookup($('who').value.trim()); } });
 
@@ -149,7 +161,11 @@ $('who').addEventListener('input', () => {
     $('sugg').style.display = rows.length ? 'block' : 'none';
   }, 200);
 });
-$('sugg').onclick = e => { const d=e.target.closest('div[data-id]'); if(!d) return; $('who').value=d.dataset.n; $('sugg').style.display='none'; showResearcher(d.dataset.id); };
+$('sugg').onclick = e => {
+  const d=e.target.closest('div[data-id]'), o=e.target.closest('div[data-oid]'); $('sugg').style.display='none';
+  if(d){ $('who').value=d.dataset.n; showResearcher(d.dataset.id); }
+  if(o){ $('org').value=o.dataset.n; showInstitution(o.dataset.oid); }
+};
 document.addEventListener('click', e => { if(!e.target.closest('.ask')) $('sugg').style.display='none'; });
 
 function busy(on, msg){ $('go').disabled=on; $('status').className='status'; $('status').textContent=msg||''; }
@@ -172,6 +188,34 @@ async function lookup(name){
   busy(false);
   if(!rows.length){ $('status').textContent=`no researcher called “${name}” in the graph`; return; }
   showResearcher(rows[0].id);
+}
+
+async function lookupOrg(name){
+  if(!name) { $('org').focus(); return; }
+  busy(true,'looking up…');
+  const rows = await fetch('/api/institutions?q='+encodeURIComponent(name)).then(r=>r.json()).catch(()=>[]);
+  busy(false);
+  if(!rows.length){ $('status').textContent=`no institution called “${name}” in the graph`; return; }
+  showInstitution(rows[0].id);
+}
+
+async function showInstitution(id){
+  $('out').hidden=false; busy(true,'');
+  const p = await fetch('/api/institution?id='+encodeURIComponent(id)+'&limit=40').then(r=>r.json());
+  busy(false);
+  lastEgo = p.graph; animate(p.graph);
+  $('left').innerHTML = `<div class="profile">
+    <h3>${p.name}</h3>
+    <div class="where">${p.country||''} · ${plural(p.n_works,'paper')} with a Sydney co-author since 2019</div>
+    <h2>Works on</h2>
+    <div class="topics">${p.topics.map(t=>`<span>${t.topic}<b>${t.n}</b></span>`).join('')}</div>
+    <h2>Most published people here</h2>
+    <div class="coauth">${p.people.slice(0,12).map(a=>`<a data-id="${a.id}">${a.name}<small>${a.n_works}</small></a>`).join('')}</div>
+    <h2>Publishes with</h2>
+    <div class="coauth">${p.partners.map(o=>`<a data-oid="${o.id}">${o.name}<small>${o.n}</small></a>`).join('')}</div>
+  </div>`;
+  $('left').querySelectorAll('.coauth a[data-id]').forEach(a => a.onclick = () => showResearcher(a.dataset.id));
+  $('left').querySelectorAll('.coauth a[data-oid]').forEach(a => a.onclick = () => showInstitution(a.dataset.oid));
 }
 
 function renderPeople(d){
@@ -242,25 +286,33 @@ function animate(g){
   // appears with the later of its two ends and grows out of the earlier one
   const order = new Map(); nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).forEach((n,i)=>order.set(n.id,i+1)); order.set(nodes.find(n=>n.me).id,0);
   const when = d => order.get(d.id);
-  const STEP = 55, GROW = 420;
+  const STEP = 45, GROW = 500;
   const neigh = new Map(nodes.map(n=>[n.id,new Set([n.id])]));
   links.forEach(l=>{ neigh.get(l.source.id).add(l.target.id); neigh.get(l.target.id).add(l.source.id); });
 
+  // Everything starts on the root and flies out to its place, strongest
+  // co-authors first; each link follows the ends it connects.
+  const root = nodes.find(n=>n.me);
+  const posAt = (d, t) => { if (d.me) return [d.x, d.y]; const e = d3.easeCubicOut(t); return [root.x + (d.x-root.x)*e, root.y + (d.y-root.y)*e]; };
   const L = svg.append('g').selectAll('line').data(links).join('line')
     .attr('stroke',ink).attr('stroke-opacity',d=>Math.min(.5,.08+d.n*.06)).attr('stroke-width',d=>Math.min(3.5,.5+d.n*.35))
-    .each(function(d){ const first = when(d.source) <= when(d.target) ? d.source : d.target; d.from=first; d.to = first===d.source ? d.target : d.source; })
-    .attr('x1',d=>d.from.x).attr('y1',d=>d.from.y).attr('x2',d=>d.from.x).attr('y2',d=>d.from.y);
-  L.transition().delay(d=>when(d.to)*STEP).duration(GROW).ease(d3.easeCubicOut).attr('x2',d=>d.to.x).attr('y2',d=>d.to.y);
-
-  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor',d=>d.me?'default':'pointer');
-  N.append('circle').attr('r',0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3)
-    .transition().delay(d=>when(d)*STEP).duration(380).ease(d3.easeBackOut.overshoot(1.6)).attr('r',r);
+    .attr('x1',root.x).attr('y1',root.y).attr('x2',root.x).attr('y2',root.y).attr('opacity',0);
+  const N = svg.append('g').selectAll('g').data(nodes).join('g').attr('transform',`translate(${root.x},${root.y})`).style('cursor',d=>d.me?'default':'pointer');
+  N.append('circle').attr('r',d=>d.me?r(d):0).attr('fill',d=>d.me?accent:d.sydney?ink:'#fff').attr('stroke',d=>d.me?accent:ink).attr('stroke-width',1.3);
+  N.transition().delay(d=>when(d)*STEP).duration(GROW+200).ease(d3.easeCubicOut)
+    .attrTween('transform', d => t => { const [x,y]=posAt(d,t); return `translate(${x},${y})`; });
+  N.select('circle').transition().delay(d=>when(d)*STEP).duration(380).ease(d3.easeBackOut.overshoot(1.4)).attr('r',r);
+  L.transition().delay(d=>Math.max(when(d.source),when(d.target))*STEP).duration(GROW+200).ease(d3.easeCubicOut).attr('opacity',1)
+    .attrTween('x1', d => t => posAt(d.source, when(d.source)>=when(d.target)?t:1)[0])
+    .attrTween('y1', d => t => posAt(d.source, when(d.source)>=when(d.target)?t:1)[1])
+    .attrTween('x2', d => t => posAt(d.target, when(d.target)>=when(d.source)?t:1)[0])
+    .attrTween('y2', d => t => posAt(d.target, when(d.target)>=when(d.source)?t:1)[1]);
 
   // labels: centre below its dot; strongest co-authors where they fit; fade in last
   const placed = [], cw = 6.6, lh = 13;
   const fits = b => !placed.some(o => b.x < o.x+o.w && b.x+b.w > o.x && b.y < o.y+o.h && b.y+b.h > o.y);
   const lab = svg.append('g').attr('font-family','ui-monospace, Menlo, monospace').attr('paint-order','stroke').attr('stroke','#f7f4ee').attr('stroke-width',3.5).attr('stroke-linejoin','round');
-  const me = nodes.find(n=>n.me);
+  const me = root;
   const cb = {x: me.x - me.name.length*cw*1.05/2, y: me.y + r(me) + 3, w: me.name.length*cw*1.05, h: lh}; placed.push(cb);
   lab.append('text').text(me.name).attr('x',me.x).attr('y',cb.y+11).attr('text-anchor','middle').attr('font-size',12.5).attr('font-weight',600).attr('fill',accent).attr('opacity',0).transition().delay(300).duration(400).attr('opacity',1);
   nodes.filter(n=>!n.me).sort((a,b)=>b.shared-a.shared).slice(0,10).forEach(d => {
@@ -271,7 +323,7 @@ function animate(g){
       const hitsDot = nodes.some(o => o!==d && o.x > b.x-4 && o.x < b.x+b.w+4 && Math.abs(o.y-d.y) < 9);
       if (fits(b) && !hitsDot) { placed.push(b);
         lab.append('text').text(d.name).attr('x', sg>0 ? b.x : b.x+w).attr('y', d.y+4).attr('text-anchor', sg>0?'start':'end').attr('font-size',11).attr('fill','#26221f')
-          .attr('opacity',0).transition().delay(when(d)*STEP+300).duration(400).attr('opacity',1); break; }
+          .attr('opacity',0).transition().delay(when(d)*STEP+GROW).duration(400).attr('opacity',1); break; }
     }
   });
 

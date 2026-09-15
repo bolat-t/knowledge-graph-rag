@@ -287,12 +287,16 @@ def export_neo4j(con: duckdb.DuckDBPyConnection) -> None:
         select replace(id,'https://openalex.org/','') as "id:ID(Author)", name, orcid,
                n_works as "n_works:int", first_year as "first_year:int", last_year as "last_year:int"
         from author""")
+    # aliases: '|csiro|commonwealth scientific...|' so a search for "csiro"
+    # finds the parent, whose display name is the long form
     out("institution.csv", """
-        select replace(id,'https://openalex.org/','') as "id:ID(Institution)", name, ror, country, type,
-               is_sydney as "is_sydney:boolean", n_authorships as "n_authorships:int",
-               suspect as "suspect:boolean", garbage_share as "garbage_share:double",
-               mismatch_share as "mismatch_share:double"
-        from institution""")
+        select replace(i.id,'https://openalex.org/','') as "id:ID(Institution)", i.name, i.ror, i.country, i.type,
+               i.is_sydney as "is_sydney:boolean", i.n_authorships as "n_authorships:int",
+               i.suspect as "suspect:boolean", i.garbage_share as "garbage_share:double",
+               i.mismatch_share as "mismatch_share:double",
+               case when a.aliases is not null and len(a.aliases) > 0
+                    then '|' || array_to_string(a.aliases, '|') || '|' end as aliases
+        from institution i left join institution_alias a using (id)""")
     out("topic.csv", """
         select replace(id,'https://openalex.org/','') as "id:ID(Topic)", name, subfield, field, "domain",
                n_works as "n_works:int" from topic""")

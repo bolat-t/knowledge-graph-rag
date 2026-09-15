@@ -69,6 +69,43 @@ return a.id as id, a.name as name, a.n_works as n_works, a.first_year as first_y
        institutions, topics, recent
 """
 
+SEARCH_INSTITUTIONS = """
+match (i:Institution)
+where not i.suspect and (toLower(i.name) contains $q or (i.aliases is not null and i.aliases contains $q))
+return i.id as id, i.name as name, i.country as country, i.is_sydney as sydney, i.n_authorships as n
+order by (toLower(i.name) = $q or (i.aliases is not null and i.aliases contains ('|' + $q + '|'))) desc,
+         i.n_authorships desc limit 8
+"""
+# Three small aggregates rather than one query: UNSW has 60k papers, and a
+# single query carrying topics and partners together blows the transaction
+# memory limit. count(w) not count(distinct w): FROM_INSTITUTION is already
+# one edge per (work, institution).
+INSTITUTION_BASIC = """
+match (i:Institution {id: $id})
+optional match (i)<-[:FROM_INSTITUTION]-(w:Work)
+return i.id as id, i.name as name, i.country as country, i.is_sydney as sydney, i.aliases as aliases, count(w) as n_works
+"""
+INSTITUTION_TOPICS = """
+match (i:Institution {id: $id})<-[:FROM_INSTITUTION]-(w:Work)-[:HAS_TOPIC {is_primary: true}]->(t:Topic)
+with t, count(w) as n order by n desc limit 10
+return t.name as topic, t.field as field, n
+"""
+INSTITUTION_PARTNERS = """
+match (i:Institution {id: $id})<-[:FROM_INSTITUTION]-(w:Work)-[:FROM_INSTITUTION]->(o:Institution)
+where o <> i and not o.suspect
+with o, count(w) as n order by n desc limit 8
+return o.id as id, o.name as name, o.country as country, n
+"""
+INSTITUTION_PEOPLE = """
+match (a:Author)-[af:AFFILIATED_WITH]->(i:Institution {id: $id})
+with a, af order by af.n_works desc limit $limit
+optional match (a)-[:AUTHORED]->(w:Work)-[:HAS_TOPIC {is_primary: true}]->(t:Topic)
+with a, af, t, count(w) as n order by n desc
+with a, af, collect(t.name)[0] as topic
+return a.id as id, a.name as name, af.n_works as n_works, topic
+order by n_works desc
+"""
+
 STATS = """
 match (n) with labels(n)[0] as l, count(*) as c return collect({label: l, n: c}) as nodes
 """
@@ -164,6 +201,39 @@ def author(id: str):
     r = rows[0]
     r["institutions"] = [short_inst(i) for i in r["institutions"] if i]
     r["topics"] = [t for t in r["topics"] if t.get("topic")]
+    return r
+
+
+@app.get("/api/institutions")
+def institutions(q: str = Query(min_length=2)):
+    rows = cypher(SEARCH_INSTITUTIONS, q=q.lower().strip())
+    for r in rows:
+        r["short"] = short_inst(r["name"])
+    return rows
+
+
+@app.get("/api/institution")
+def institution(id: str, limit: int = 40):
+    rows = cypher(INSTITUTION_BASIC, id=id)
+    if not rows:
+        raise HTTPException(404, "unknown institution id")
+    r = rows[0]
+    # a label that fits on a graph: the shortest acronym-like alias, else the name
+    aliases = [a for a in (r.pop("aliases") or "").split("|") if 3 <= len(a) <= 12 and a.isalpha()]
+    r["short"] = (min(aliases, key=len).upper() if aliases else short_inst(r["name"]))
+    r["topics"] = cypher(INSTITUTION_TOPICS, id=id)
+    r["partners"] = [{**p, "name": short_inst(p["name"])} for p in cypher(INSTITUTION_PARTNERS, id=id)]
+    people = cypher(INSTITUTION_PEOPLE, id=id, limit=limit)
+    # co-authorship among the institution's most-published people: the graph
+    # the page draws for an institution, with the institution as the root
+    links = cypher(EGO_LINKS, ids=[p["id"] for p in people])
+    r["people"] = people
+    r["graph"] = {
+        "centre": {"id": id, "name": r["short"], "institutions": [], "n_works": r["n_works"]},
+        "nodes": [{"id": id, "name": r["short"], "shared": 0, "sydney": True, "me": True}]
+              + [{"id": p["id"], "name": p["name"], "shared": p["n_works"], "sydney": True, "institution": r["name"], "n_works": p["n_works"]} for p in people],
+        "links": [{"s": id, "t": p["id"], "n": max(1, p["n_works"] // 5)} for p in people] + links,
+    }
     return r
 
 
